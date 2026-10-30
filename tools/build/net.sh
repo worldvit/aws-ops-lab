@@ -71,8 +71,9 @@ ASSOC=$(aws ec2 describe-network-acls --filters Name=association.subnet-id,Value
 aws ec2 replace-network-acl-association --association-id $ASSOC --network-acl-id $NACL_ID >/dev/null
 
 echo "== 1-7 방화벽을 경로에 끼우기"
-until [ "$(aws network-firewall describe-firewall --firewall-name $SID-net-fw --query 'FirewallStatus.Status' --output text)" = READY ]; do sleep 15; done
-FW_EP=$(aws network-firewall describe-firewall --firewall-name $SID-net-fw --query 'FirewallStatus.SyncStates.*.Attachment.EndpointId' --output text)
+# 방화벽 엔드포인트(vpce-...)가 만들어질 때까지 기다린다
+until FW_EP=$(aws network-firewall describe-firewall --firewall-name $SID-net-fw \
+  --query 'FirewallStatus.SyncStates.*.Attachment | [?Status==`READY`].EndpointId | [0]' --output text) && [[ $FW_EP == vpce-* ]]; do sleep 20; done
 echo "방화벽 엔드포인트: $FW_EP"
 aws logs create-log-group --log-group-name /opslab/$SID/net-fw
 aws logs put-retention-policy --log-group-name /opslab/$SID/net-fw --retention-in-days 1
