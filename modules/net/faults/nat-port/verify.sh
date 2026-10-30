@@ -3,7 +3,7 @@
 source "$(dirname "$(readlink -f "$0")")/../../check.sh"
 start nat-port
 echo "[1] 경로 점검"; chk_nat
-echo "[2] NAT 지표"; chk_natmetric 2
+echo "[2] NAT 지표"; chk_natmetric
 echo "[3] 서버별 외부(80번) 연결 수 — 평소에는 수십 개 이하"
 while read -r h c; do
   [ -z "$h" ] && continue

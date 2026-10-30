@@ -21,11 +21,13 @@ chk_sts() {
   case "$d" in 10.20.*) ok "④ STS 이름 해석: 사설 IP $d (엔드포인트)";; *) ng "④ STS 이름 해석: ${d:-결과 없음} (사설 IP 10.20.x 여야 함)";; esac
   [ "$c" = ok ] && ok "④ 내부 서비스 → STS 호출 성공" || ng "④ 내부 서비스 → STS 호출: ${c:-결과 없음}"
 }
-chk_natmetric() {  # 최근 $1분 NAT ErrorPortAllocation 합계 0
-  local m; m=$(aws cloudwatch get-metric-statistics --namespace AWS/NATGateway --metric-name ErrorPortAllocation \
-    --dimensions Name=NatGatewayId,Value="$NAT" --start-time "$(date -u -d "-${1:-5} min" +%FT%TZ)" --end-time "$(date -u +%FT%TZ)" \
-    --period 60 --statistics Sum --query 'sum(Datapoints[].Sum)' --output text 2>/dev/null | sed 's/None/0/')
-  [ "${m%.*}" -eq 0 ] && ok "NAT ErrorPortAllocation 최근 ${1:-5}분 0건" || ng "NAT ErrorPortAllocation 최근 ${1:-5}분 ${m%.*}건"
+chk_natmetric() {  # 인자 없음: 가장 최근 1분 값이 0인지 / 인자 N: 최근 N분 합계가 0인지 (지표는 1~2분 늦게 나온다)
+  local m q='sum(Datapoints[].Sum)' w=${1:-5} lbl="최근 ${1:-5}분"
+  [ -z "${1:-}" ] && { q='sort_by(Datapoints,&Timestamp)[-1].Sum'; lbl="가장 최근 1분"; }
+  m=$(aws cloudwatch get-metric-statistics --namespace AWS/NATGateway --metric-name ErrorPortAllocation \
+    --dimensions Name=NatGatewayId,Value="$NAT" --start-time "$(date -u -d "-$w min" +%FT%TZ)" --end-time "$(date -u +%FT%TZ)" \
+    --period 60 --statistics Sum --query "$q" --output text 2>/dev/null | sed 's/None/0/')
+  [ "${m%.*}" -eq 0 ] && ok "NAT ErrorPortAllocation $lbl 0건" || ng "NAT ErrorPortAllocation $lbl ${m%.*}건 (멈춘 뒤 1~2분은 남아 있을 수 있음)"
 }
 finish() {
   echo "== 결과: PASS $PASS / FAIL $FAIL =="

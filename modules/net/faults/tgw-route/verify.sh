@@ -4,7 +4,7 @@ source "$(dirname "$(readlink -f "$0")")/../../check.sh"
 start tgw-route
 echo "[1] 경로 점검"; chk_tgw
 echo "[2] 라우팅"
-st() { aws ec2 describe-route-tables --route-table-ids "$1" --query "RouteTables[0].Routes[?DestinationCidrBlock=='$2'].[TransitGatewayId,State]|[0]" --output text 2>/dev/null; }
+st() { aws ec2 describe-route-tables --route-table-ids "$1" --query "RouteTables[0].Routes[?DestinationCidrBlock=='$2'].[TransitGatewayId,State]|[0]" --output text 2>/dev/null | sed 's/^None$/없음/'; }
 r=$(st "$BASE_APP_RT" 10.20.0.0/16); [ "$r" = "$TGW"$'	'"active" ] && ok "기반 VPC 앱 라우팅 10.20.0.0/16 → TGW" || ng "기반 VPC 앱 라우팅 10.20.0.0/16: ${r:-없음}"
 r=$(st "$FW_RT" 10.0.0.0/16);       [ "$r" = "$TGW"$'	'"active" ] && ok "방화벽 서브넷 라우팅 10.0.0.0/16 → TGW" || ng "방화벽 서브넷 라우팅 10.0.0.0/16: ${r:-없음}"
 for c in 10.0.0.0/16 10.20.0.0/16; do
