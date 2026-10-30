@@ -1,0 +1,10 @@
+# 리소스 수명표 — common/cleanup.sh 가 이 표를 기준으로 동작한다
+# kind,name(<SID> 치환),created_day,used_days,night,morning,note
+stack,<SID>-d1-base,1,1-8,keep,-,VPC·서브넷·NAT·EC2 역할·loadgen (NAT는 Day 2 학습 대상이라 유지)
+ec2,<SID>-d1-loadgen,1,1-8,stop,start,부하 전용 EC2
+asg,<SID>-d1-asg,1,1-8,scale0,min=2;max=4;desired=2,앱 인스턴스(야간 0대)
+alb,<SID>-d1-alb,1,1-8,keep,-,ALB (시간당 과금 소액 — 재생성 시 DNS가 바뀌므로 유지)
+tg,<SID>-d1-tg,1,1-8,keep,-,과금 없음
+lt,<SID>-d1-lt,1,1-8,keep,-,과금 없음
+sg,<SID>-d1-alb-sg,1,1-8,keep,-,과금 없음
+sg,<SID>-d1-app-sg,1,1-8,keep,-,과금 없음

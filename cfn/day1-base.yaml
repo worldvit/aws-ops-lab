@@ -1,0 +1,165 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  SK오앤에스 AWS 인프라 운영 과정 Day 1 주변 구성(학습 대상 아님).
+  VPC, 서브넷 4개(퍼블릭 2·프라이빗 2), IGW, NAT Gateway 1개, EC2 역할, 부하 전용 EC2.
+  스택 생성 시 --tags 로 Course/Day/Owner 태그를 붙이면 모든 리소스에 전파된다.
+
+Parameters:
+  StudentId:
+    Type: String
+    AllowedPattern: "s[0-9]{2}"
+    Description: 학번 (예 s01)
+  AmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-vpc" }]
+
+  Igw:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-igw" }]
+  IgwAttach:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties: { VpcId: !Ref Vpc, InternetGatewayId: !Ref Igw }
+
+  PubA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.0.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-pub-a" }]
+  PubC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-pub-c" }]
+  AppA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.10.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-app-a" }]
+  AppC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.11.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-app-c" }]
+
+  PubRt:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-pub-rt" }]
+  PubDefault:
+    Type: AWS::EC2::Route
+    DependsOn: IgwAttach
+    Properties: { RouteTableId: !Ref PubRt, DestinationCidrBlock: 0.0.0.0/0, GatewayId: !Ref Igw }
+  PubAAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref PubA, RouteTableId: !Ref PubRt }
+  PubCAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref PubC, RouteTableId: !Ref PubRt }
+
+  NatEip:
+    Type: AWS::EC2::EIP
+    DependsOn: IgwAttach
+    Properties:
+      Domain: vpc
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-nat-eip" }]
+  Nat:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEip.AllocationId
+      SubnetId: !Ref PubA
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-nat" }]
+
+  AppRt:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-app-rt" }]
+  AppDefault:
+    Type: AWS::EC2::Route
+    Properties: { RouteTableId: !Ref AppRt, DestinationCidrBlock: 0.0.0.0/0, NatGatewayId: !Ref Nat }
+  AppAAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref AppA, RouteTableId: !Ref AppRt }
+  AppCAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: { SubnetId: !Ref AppC, RouteTableId: !Ref AppRt }
+
+  Ec2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${StudentId}-d1-ec2-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+  Ec2Profile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub "${StudentId}-d1-ec2-profile"
+      Roles: [!Ref Ec2Role]
+
+  LoadgenSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub "${StudentId}-d1-loadgen-sg"
+      GroupDescription: loadgen - egress only
+      VpcId: !Ref Vpc
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-loadgen-sg" }]
+  Loadgen:
+    Type: AWS::EC2::Instance
+    DependsOn: AppDefault
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: t3.micro
+      SubnetId: !Ref AppA
+      IamInstanceProfile: !Ref Ec2Profile
+      SecurityGroupIds: [!Ref LoadgenSg]
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-loadgen" }]
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          dnf install -y git jq tmux
+          git clone https://github.com/worldvit/megazoncloud-matchingday-sk /opt/skons || true
+          chmod -R a+rX /opt/skons
+
+Outputs:
+  VpcId:
+    Value: !Ref Vpc
+    Export: { Name: !Sub "${StudentId}-d1-VpcId" }
+  PublicSubnets:
+    Value: !Join [",", [!Ref PubA, !Ref PubC]]
+    Export: { Name: !Sub "${StudentId}-d1-PublicSubnets" }
+  AppSubnets:
+    Value: !Join [",", [!Ref AppA, !Ref AppC]]
+    Export: { Name: !Sub "${StudentId}-d1-AppSubnets" }
+  Ec2Profile:
+    Value: !Ref Ec2Profile
+    Export: { Name: !Sub "${StudentId}-d1-Ec2Profile" }
+  LoadgenId:
+    Value: !Ref Loadgen
