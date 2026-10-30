@@ -14,7 +14,7 @@ status() {
   echo "== $SID 남은 실습 리소스 (Day 0 스택 제외) =="
   echo "-- 스택 --"
   aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE UPDATE_ROLLBACK_COMPLETE ROLLBACK_COMPLETE DELETE_FAILED \
-    --query "StackSummaries[?starts_with(StackName,'$SID-')].[StackName,StackStatus]" --output text | sed 's/^/  /'
+    --query "StackSummaries[?starts_with(StackName,'$SID-') && !contains(StackName,'-d0-')].[StackName,StackStatus]" --output text | sed 's/^/  /'
   echo "-- 시간당 과금 리소스 --"
   aws ec2 describe-nat-gateways --filter Name=tag:Owner,Values="$SID" Name=state,Values=available,pending \
     --query 'NatGateways[].[NatGatewayId,Tags[?Key==`Name`]|[0].Value]' --output text | sed 's/^/  NAT /'
