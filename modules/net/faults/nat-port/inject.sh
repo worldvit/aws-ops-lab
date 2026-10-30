@@ -12,10 +12,11 @@ case $V in
 esac
 [ -n "$IDS" ] || { echo "대상 서버가 없습니다"; exit 1; }
 save target "$IP"
-ssm_run "$IDS" "set -e
+OUT=$(ssm_run "$IDS" "set -e
 curl -fsSL https://raw.githubusercontent.com/worldvit/aws-ops-lab/main/modules/net/faults/nat-port/pool.py -o /usr/local/bin/partner-sync.py
 sysctl -qw net.ipv4.ip_local_port_range='1024 65535'
 systemctl stop partner-sync 2>/dev/null || true; systemctl reset-failed partner-sync 2>/dev/null || true
 systemd-run --unit partner-sync --description 'partner sync batch' -p LimitNOFILE=200000 /usr/bin/python3 /usr/local/bin/partner-sync.py $IP $N
-sleep 2; systemctl is-active partner-sync" 60 | grep -q active || exit 1
+sleep 2; systemctl is-active partner-sync" 60)
+grep -q active <<<"$OUT" || { echo "배치 프로세스를 띄우지 못했습니다: $OUT"; exit 1; }   # 파이프로 grep -q 하면 pipefail 로 오판
 record $V
