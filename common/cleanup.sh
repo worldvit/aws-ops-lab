@@ -11,9 +11,7 @@ export AWS_REGION="${AWS_REGION:-ap-northeast-2}"
 MODE="${1:-day}"
 
 status() {
-  echo "== $SID 남은 실습 리소스 (Course=opslab, Day 0 제외) =="
-  aws resourcegroupstaggingapi get-resources --tag-filters Key=Owner,Values="$SID" Key=Course,Values=opslab \
-    --query 'ResourceTagMappingList[?!(Tags[?Key==`Day`].Value|[0]==`0`)].ResourceARN' --output text | tr '\t' '\n' | sed '/^$/d;s/^/  /'
+  echo "== $SID 남은 실습 리소스 (Day 0 스택 제외) =="
   echo "-- 스택 --"
   aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE UPDATE_ROLLBACK_COMPLETE ROLLBACK_COMPLETE DELETE_FAILED \
     --query "StackSummaries[?starts_with(StackName,'$SID-')].[StackName,StackStatus]" --output text | sed 's/^/  /'
@@ -23,6 +21,8 @@ status() {
   aws ec2 describe-instances --filters Name=tag:Owner,Values="$SID" Name=instance-state-name,Values=pending,running,stopping,stopped \
     --query 'Reservations[].Instances[].[InstanceId,Tags[?Key==`Name`]|[0].Value,State.Name]' --output text | sed 's/^/  EC2 /'
   aws elbv2 describe-load-balancers --query "LoadBalancers[?starts_with(LoadBalancerName,'$SID-')].LoadBalancerName" --output text | tr '\t' '\n' | sed '/^$/d;s/^/  ALB /'
+  aws elbv2 describe-target-groups --query "TargetGroups[?starts_with(TargetGroupName,'$SID-')].TargetGroupName" --output text | tr '\t' '\n' | sed '/^$/d;s/^/  TG  /'
+  aws autoscaling describe-auto-scaling-groups --query "AutoScalingGroups[?starts_with(AutoScalingGroupName,'$SID-')].AutoScalingGroupName" --output text | tr '\t' '\n' | sed '/^$/d;s/^/  ASG /'
 }
 
 delete_all() {
@@ -40,13 +40,15 @@ delete_all() {
     aws elbv2 delete-load-balancer --load-balancer-arn "$ALB" && aws elbv2 wait load-balancers-deleted --load-balancer-arns "$ALB" && echo "  ALB 삭제"
   fi
   TG=$(aws elbv2 describe-target-groups --names "$SID-d1-tg" --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null)
-  [ -n "$TG" ] && [ "$TG" != None ] && ! cfn_managed "$TG" && aws elbv2 delete-target-group --target-group-arn "$TG" && echo "  TG 삭제"
+  if [ -n "$TG" ] && [ "$TG" != None ] && ! cfn_managed "$TG"; then   # 리스너가 ALB와 함께 사라지는 데 몇 초 걸린다
+    for _ in 1 2 3 4 5 6; do aws elbv2 delete-target-group --target-group-arn "$TG" 2>/dev/null && { echo "  TG 삭제"; break; }; sleep 10; done
+  fi
   LT=$(aws ec2 describe-launch-templates --launch-template-names "$SID-d1-lt" --query 'LaunchTemplates[0].Tags[?Key==`aws:cloudformation:stack-name`]|[0].Value' --output text 2>/dev/null)
   [ "$LT" = None ] && aws ec2 delete-launch-template --launch-template-name "$SID-d1-lt" >/dev/null && echo "  LT 삭제"
   sleep 20   # 네트워크 인터페이스 해제 대기
   for sg in app alb; do
     id=$(aws ec2 describe-security-groups --filters Name=group-name,Values="$SID-d1-$sg-sg" --query 'SecurityGroups[?!(Tags[?Key==`aws:cloudformation:stack-name`])].GroupId|[0]' --output text 2>/dev/null)
-    [ -n "$id" ] && [ "$id" != None ] && aws ec2 delete-security-group --group-id "$id" && echo "  SG 삭제: $sg"
+    [ -n "$id" ] && [ "$id" != None ] && aws ec2 delete-security-group --group-id "$id" >/dev/null && echo "  SG 삭제: $sg"
   done
   # 2) 수강생이 만든 CloudWatch 알람 (<학번>-d*)
   AL=$(aws cloudwatch describe-alarms --alarm-name-prefix "$SID-d" --query 'MetricAlarms[].AlarmName' --output text)
