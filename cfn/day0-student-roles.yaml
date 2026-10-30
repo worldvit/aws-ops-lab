@@ -87,7 +87,14 @@ Resources:
                 Action: ssm:SendCommand
                 Resource: !Sub "arn:aws:ec2:*:${AWS::AccountId}:instance/*"
                 Condition: { StringEquals: { "ssm:resourceTag/Course": skons-ops } }
-              # 시작 템플릿 새 버전을 ASG에 붙일 때 필요
+              # ASG에 시작 템플릿 버전을 붙일 때 ASG가 "이 호출자가 그 템플릿으로 서버를 띄울 수 있는지"를
+              # 검사한다. 그래서 RunInstances·CreateTags·PassRole 권한이 함께 필요하다.
+              - Sid: UseLaunchTemplateForAsg
+                Effect: Allow
+                Action:
+                  - ec2:RunInstances
+                  - ec2:CreateTags
+                Resource: "*"
               - Sid: PassEc2Role
                 Effect: Allow
                 Action: iam:PassRole
