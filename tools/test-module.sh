@@ -2,6 +2,7 @@
 # 모듈 독립 시험 (강사·작성자용) — 과정에 넣기 전에 모듈이 혼자서 동작하는지 확인한다.
 #   SID=s00 bash ~/opslab/tools/test-module.sh cmp
 # 순서: 정리 → 환경 층 배포(builds 층까지 + 모듈 env/done) → baseline verify → 모든 Lab·모든 변형 주입→원복 → 정리
+#   DEEP=<초> 이면 주입 후·원복 후 그 초만큼 기다려 장애 verify 가 각각 실패·통과하는지도 본다(증상 검증).
 #   SKIP_START=1 이면 앞의 정리·배포를 건너뛰고 지금 환경으로 시험한다(따라하기 명령 검증용).
 # 계정에 L0 층(<학번>-l0)이 있어야 한다. 부하 도구는 돌리지 않으므로 "요청 수 0건" FAIL 은 무시한다.
 set -uo pipefail
@@ -31,9 +32,13 @@ grep -E '^ *- *[a-z]+-[0-9]+ *\|' "$MY" | while IFS='|' read -r lab fault vars l
   vars=$(xargs <<<"$vars"); fault=$(xargs <<<"$fault")
   for v in $(seq 1 "$vars"); do
     r=$(VARIANT=$v bash "$ROOT/common/inject.sh" "$lab" </dev/null 2>&1 | grep -c '✅')
+    d=""; if [ -n "${DEEP:-}" ] && [ "$r" -ge 1 ]; then   # DEEP=1: 주입 후 verify 가 실패하는지(증상이 나는지)
+      sleep "$DEEP"; bash "$ROOT/modules/$MOD/faults/$fault/verify.sh" >>"$LOG" 2>&1 && d=" 증상=없음!" || d=" 증상=있음"; fi
     b=$(echo y | bash "$ROOT/common/inject.sh" rollback "$lab" 2>&1 | grep -c '✅ 원복')
-    [ "$r" -ge 1 ] && [ "$b" -ge 1 ] && res=OK || { res=XX; echo FAIL >> "$LOG.fail"; }
-    say "$res $lab v$v ($fault) 주입=$r 원복=$b"
+    if [ -n "${DEEP:-}" ] && [ "$b" -ge 1 ]; then          # 원복 후 verify 가 통과하는지
+      sleep "$DEEP"; bash "$ROOT/modules/$MOD/faults/$fault/verify.sh" >>"$LOG" 2>&1 && d="$d 원복판정=통과" || d="$d 원복판정=실패!"; fi
+    [ "$r" -ge 1 ] && [ "$b" -ge 1 ] && [[ "$d" != *"!"* ]] && res=OK || { res=XX; echo FAIL >> "$LOG.fail"; }
+    say "$res $lab v$v ($fault) 주입=$r 원복=$b$d"
   done
 done
 [ -f "$LOG.fail" ] && FAILS=$((FAILS + $(wc -l < "$LOG.fail"))) && rm -f "$LOG.fail"
