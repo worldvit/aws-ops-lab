@@ -20,10 +20,13 @@ handle() {  # kind name action
     ec2:stop)  id=$(ec2_id "$name"); [ -n "$id" ] && aws ec2 stop-instances --instance-ids $id >/dev/null && echo "  중지: $name ($id)";;
     ec2:start) id=$(ec2_id "$name"); [ -n "$id" ] && aws ec2 start-instances --instance-ids $id >/dev/null && echo "  시작: $name ($id)";;
     asg:scale0)
+      # 확장 정책이 밤사이 다시 늘리지 않도록 알람 연동(AlarmNotification)을 먼저 멈춘다
+      aws autoscaling suspend-processes --auto-scaling-group-name "$name" --scaling-processes AlarmNotification 2>/dev/null
       aws autoscaling update-auto-scaling-group --auto-scaling-group-name "$name" --min-size 0 --desired-capacity 0 2>/dev/null \
-        && echo "  0대 축소: $name";;
+        && echo "  0대 축소(확장 정책 일시 중지): $name";;
     asg:min=*)
       IFS=';' read -r a b c <<<"$act"
+      aws autoscaling resume-processes --auto-scaling-group-name "$name" 2>/dev/null
       aws autoscaling update-auto-scaling-group --auto-scaling-group-name "$name" \
         --min-size "${a#min=}" --max-size "${b#max=}" --desired-capacity "${c#desired=}" 2>/dev/null \
         && echo "  복원: $name (${act})";;
