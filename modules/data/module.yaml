@@ -1,0 +1,15 @@
+# 모듈 정의 — 과정·Day와 무관하게 이 모듈만의 정보를 둔다.
+id: data
+title: 데이터 계층 운영
+hours: 8
+requires: L2          # 아침에 배포할 환경 층 (common/start.sh data → L1, L2)
+builds: L3            # 이 모듈에서 직접 구축하는 층 (따라잡기: common/start.sh data full → L3 = data 완료 상태)
+topics: Aurora 라이터 페일오버 시 애플리케이션 거동 · 복제 지연 급증 · 커넥션 풀 고갈 · 롱 트랜잭션과 vacuum 정체에 따른 스토리지 증가 · 파라미터 그룹 변경과 재시작 · 특정 시점 복원(PITR)
+# Lab 목록: Lab ID | 장애 디렉터리(faults/) | 변형 수 | 구분 | 장애 유형(수강생에게 보이는 문구)
+labs:
+  - data-1 | failover-endpoint | 2 | 필수 | DB 장애 조치(페일오버) 뒤 쓰기 요청이 계속 실패하는 장애 (페일오버까지 1~2분)
+  - data-2 | conn-limit        | 3 | 필수 | DB 연결이 일부 또는 전부 거부되는 장애
+  - data-3 | vacuum-stall      | 2 | 필수 | 테이블 크기와 죽은 행(dead tuple)이 계속 늘어나는 장애 (몇 분에 걸쳐 드러남)
+  - data-4 | param-group       | 3 | 필수 | 설정 변경 뒤 DB 요청이 실패하는 장애 (변형에 따라 재시작 1~3분 포함)
+  - data-5 | replica-lag       | 2 | 심화 | 리더에서 읽은 데이터가 최신이 아닌 장애
+  - data-6 | pitr              | 1 | 심화 | 주문 데이터 일부가 사라진 장애 — 특정 시점 복원(PITR)으로 되살린다 (복원 15~25분)

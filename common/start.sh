@@ -37,6 +37,7 @@ for n in $(seq 1 "$TOP"); do
   tpl="$ROOT/layers/${FILE[$n]}.yaml"
   [ -f "$tpl" ] || { echo "❌ 층 템플릿이 아직 없습니다: layers/${FILE[$n]}.yaml"; exit 1; }
   deploy "$SID-l$n" "$tpl" "${OWNER[$n]}"
+  init="$ROOT/layers/${FILE[$n]}.init.sh"; [ -f "$init" ] && { source ~/opslab-env.sh; bash "$init" || exit 1; }   # 층 초기화(예: DB 계정·테이블)
 done
 # 모듈 주변 구성(env.yaml)과, 따라잡기일 때 모듈 완료 상태(done.yaml)
 [ -f "$ROOT/modules/$MOD/env.yaml" ] && deploy "$SID-$MOD-env" "$ROOT/modules/$MOD/env.yaml" "$MOD"

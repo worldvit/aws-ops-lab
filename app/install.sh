@@ -10,7 +10,7 @@ APP_PORT="${APP_PORT:-8080}"
 APP_VERSION="${APP_VERSION:-v1}"
 
 dnf install -y python3-pip
-pip3 install --quiet flask==3.0.3 gunicorn==22.0.0
+pip3 install --quiet flask==3.0.3 gunicorn==22.0.0 psycopg2-binary==2.9.9
 
 mkdir -p /opt/app /etc/app
 curl -fsSL "$REPO_RAW/app/app.py" -o /opt/app/app.py
@@ -41,7 +41,39 @@ RestartSec=3
 WantedBy=multi-user.target
 EOF
 
+# DB 접속정보 갱신기(data 모듈부터): SSM Parameter Store /opslab/app/db/* → /etc/app/db.env (30초마다)
+cat > /opt/app/db-env.sh <<'DBENV'
+#!/bin/bash
+T=$(curl -s -m 2 -X PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
+R=$(curl -s -m 2 -H "X-aws-ec2-metadata-token: $T" http://169.254.169.254/latest/meta-data/placement/region)
+P=/opslab/app/db
+OUT=$(aws ssm get-parameters --region "$R" --names $P/host $P/reader_host $P/port $P/name $P/user $P/password \
+      --query 'Parameters[].[Name,Value]' --output text 2>/dev/null) || exit 0
+[ -z "$OUT" ] && { rm -f /etc/app/db.env; exit 0; }
+while IFS=$'\t' read -r k v; do k=${k##*/}; echo "DB_${k^^}=$v"; done <<<"$OUT" > /etc/app/db.env.tmp
+chmod 600 /etc/app/db.env.tmp && mv /etc/app/db.env.tmp /etc/app/db.env
+DBENV
+chmod +x /opt/app/db-env.sh
+cat > /etc/systemd/system/app-db-env.service <<'DBENV'
+[Unit]
+Description=refresh DB settings from SSM Parameter Store
+[Service]
+Type=oneshot
+ExecStart=/opt/app/db-env.sh
+DBENV
+cat > /etc/systemd/system/app-db-env.timer <<'DBENV'
+[Unit]
+Description=refresh DB settings every 30s
+[Timer]
+OnBootSec=5s
+OnUnitActiveSec=30s
+AccuracySec=1s
+[Install]
+WantedBy=timers.target
+DBENV
+
 systemctl daemon-reload
+systemctl enable --now app-db-env.timer
 systemctl enable --now app.service
 
 # 로컬 확인

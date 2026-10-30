@@ -1,0 +1,161 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  [환경 층 L3 — 데이터 계층] data 모듈 완료 상태(정상, 재발 방지 알람 포함): Aurora PostgreSQL 클러스터(라이터·리더),
+  서브넷 그룹·보안 그룹·파라미터 그룹, 앱 접속정보(SSM Parameter Store /opslab/app/db/*, data 모듈은 평문 String).
+  스택 이름: <학번>-l3 (common/start.sh 가 배포한 뒤 layers/l3-data.init.sh 로 앱 계정·테이블을 만든다). L1·L2 층이 먼저 있어야 한다.
+
+Parameters:
+  StudentId:
+    Type: String
+    AllowedPattern: "s[0-9]{2}"
+  EngineVersion:
+    Type: String
+    Default: "17.9"
+  ParamFamily:
+    Type: String
+    Default: aurora-postgresql17
+  InstanceClass:
+    Type: String
+    Default: db.t4g.medium
+
+Resources:
+  DbSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub "${StudentId}-data-db-sg"
+      GroupDescription: Aurora - 5432 from base VPC
+      VpcId: { "Fn::ImportValue": !Sub "${StudentId}-base-VpcId" }
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 5432, ToPort: 5432, CidrIp: 10.0.0.0/16 }
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-data-db-sg" }]
+  DbSubnets:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: !Sub "${StudentId}-data-subnets"
+      DBSubnetGroupDescription: app subnets
+      SubnetIds: !Split [",", { "Fn::ImportValue": !Sub "${StudentId}-base-AppSubnets" }]
+  ClusterParams:
+    Type: AWS::RDS::DBClusterParameterGroup
+    Properties:
+      DBClusterParameterGroupName: !Sub "${StudentId}-data-cpg"
+      Description: opslab data cluster parameters
+      Family: !Ref ParamFamily
+      Parameters:
+        log_min_duration_statement: "2000"
+  InstanceParams:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      DBParameterGroupName: !Sub "${StudentId}-data-ipg"
+      Description: opslab data instance parameters
+      Family: !Ref ParamFamily
+      Parameters:
+        log_connections: "0"
+
+  Cluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      DBClusterIdentifier: !Sub "${StudentId}-data-db"
+      Engine: aurora-postgresql
+      EngineVersion: !Ref EngineVersion
+      DatabaseName: opslab
+      MasterUsername: opslab_admin
+      # 실습용 암호: 스택마다 다른 값(스택 ID 끝부분). 비밀 관리는 sec 모듈에서 다룬다.
+      MasterUserPassword: !Join ["", ["Adm-", !Select [2, !Split ["/", !Ref "AWS::StackId"]]]]
+      DBClusterParameterGroupName: !Ref ClusterParams
+      DBSubnetGroupName: !Ref DbSubnets
+      VpcSecurityGroupIds: [!Ref DbSg]
+      BackupRetentionPeriod: 1
+      StorageEncrypted: true
+      DeletionProtection: false
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-data-db" }]
+  Writer:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Sub "${StudentId}-data-db-1"
+      DBClusterIdentifier: !Ref Cluster
+      Engine: aurora-postgresql
+      DBInstanceClass: !Ref InstanceClass
+      DBParameterGroupName: !Ref InstanceParams
+      PromotionTier: 1
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-data-db-1" }]
+  Reader:
+    Type: AWS::RDS::DBInstance
+    DependsOn: Writer
+    Properties:
+      DBInstanceIdentifier: !Sub "${StudentId}-data-db-2"
+      DBClusterIdentifier: !Ref Cluster
+      Engine: aurora-postgresql
+      DBInstanceClass: !Ref InstanceClass
+      DBParameterGroupName: !Ref InstanceParams
+      PromotionTier: 1
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-data-db-2" }]
+
+  # 앱 접속정보 (앱 서버의 app-db-env.timer 가 30초마다 /etc/app/db.env 로 내려받는다)
+  PHost:
+    Type: AWS::SSM::Parameter
+    Properties: { Name: /opslab/app/db/host, Type: String, Value: !GetAtt Cluster.Endpoint.Address }
+  PReader:
+    Type: AWS::SSM::Parameter
+    Properties: { Name: /opslab/app/db/reader_host, Type: String, Value: !GetAtt Cluster.ReadEndpoint.Address }
+  PPort:
+    Type: AWS::SSM::Parameter
+    Properties: { Name: /opslab/app/db/port, Type: String, Value: "5432" }
+  PName:
+    Type: AWS::SSM::Parameter
+    Properties: { Name: /opslab/app/db/name, Type: String, Value: opslab }
+  PUser:
+    Type: AWS::SSM::Parameter
+    Properties: { Name: /opslab/app/db/user, Type: String, Value: app }
+  PPassword:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /opslab/app/db/password
+      Type: String
+      Value: !Join ["", ["App-", !Select [2, !Split ["/", !Ref "AWS::StackId"]]]]
+  PAdmin:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /opslab/data/admin_password
+      Type: String
+      Value: !Join ["", ["Adm-", !Select [2, !Split ["/", !Ref "AWS::StackId"]]]]
+
+  # 재발 방지 알람
+  LagAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${StudentId}-data-replica-lag"
+      Namespace: AWS/RDS
+      MetricName: AuroraReplicaLagMaximum
+      Dimensions: [{ Name: DBClusterIdentifier, Value: !Ref Cluster }]
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1000
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+  ConnAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${StudentId}-data-connections"
+      Namespace: AWS/RDS
+      MetricName: DatabaseConnections
+      Dimensions: [{ Name: DBClusterIdentifier, Value: !Ref Cluster }, { Name: Role, Value: WRITER }]
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 300
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+Outputs:
+  DbEndpoint:
+    Value: !GetAtt Cluster.Endpoint.Address
+    Export: { Name: !Sub "${StudentId}-data-Endpoint" }
+  DbReaderEndpoint:
+    Value: !GetAtt Cluster.ReadEndpoint.Address
+  DbClusterId:
+    Value: !Ref Cluster
+    Export: { Name: !Sub "${StudentId}-data-ClusterId" }
+  DbSgId:
+    Value: !Ref DbSg
+    Export: { Name: !Sub "${StudentId}-data-DbSg" }
