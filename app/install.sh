@@ -2,10 +2,10 @@
 # 샘플 앱 설치 스크립트 — 시작 템플릿(Launch Template)의 사용자 데이터에서 실행된다.
 # 사용법(사용자 데이터):
 #   #!/bin/bash
-#   curl -fsSL https://raw.githubusercontent.com/worldvit/megazoncloud-matchingday-sk/main/app/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/worldvit/aws-ops-lab/main/app/install.sh | bash
 set -euo pipefail
 
-REPO_RAW="${REPO_RAW:-https://raw.githubusercontent.com/worldvit/megazoncloud-matchingday-sk/main}"
+REPO_RAW="${REPO_RAW:-https://raw.githubusercontent.com/worldvit/aws-ops-lab/main}"
 APP_PORT="${APP_PORT:-8080}"
 APP_VERSION="${APP_VERSION:-v1}"
 
@@ -26,7 +26,7 @@ fi
 
 cat > /etc/systemd/system/app.service <<'EOF'
 [Unit]
-Description=skons-ops sample app (Flask + gunicorn)
+Description=opslab sample app (Flask + gunicorn)
 After=network-online.target
 Wants=network-online.target
 

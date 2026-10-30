@@ -1,4 +1,4 @@
-"""SK오앤에스 AWS 인프라 운영 과정 — 샘플 앱 (Day 1~8 공통)
+"""Ops Lab(AWS 인프라 운영 장애 대응 실습) — 샘플 앱 (Day 1~8 공통)
 
 경로
   /health  헬스체크 (ALB 타깃 그룹이 사용)
@@ -43,7 +43,7 @@ def api():
     rate = float(os.environ.get("APP_ERROR_RATE", "0") or 0)
     if random.random() < rate:
         return jsonify(status="error", message="internal error", **_base()), 500
-    return jsonify(status="ok", message="hello from skons-ops", **_base())
+    return jsonify(status="ok", message="hello from opslab", **_base())
 
 
 @app.route("/slow")
@@ -67,7 +67,7 @@ def db():
         conn = psycopg2.connect(
             host=host,
             port=int(os.environ.get("DB_PORT", "5432")),
-            dbname=os.environ.get("DB_NAME", "skons"),
+            dbname=os.environ.get("DB_NAME", "opslab"),
             user=os.environ.get("DB_USER", "app"),
             password=os.environ.get("DB_PASSWORD", ""),
             connect_timeout=3,

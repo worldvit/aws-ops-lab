@@ -47,13 +47,13 @@ Resources:
           - ResourceType: instance
             Tags:
               - { Key: Name, Value: !Sub "${StudentId}-d1-app" }
-              - { Key: Course, Value: skons-ops }
+              - { Key: Course, Value: opslab }
               - { Key: Day, Value: "1" }
               - { Key: Owner, Value: !Ref StudentId }
         UserData:
           Fn::Base64: |
             #!/bin/bash
-            curl -fsSL https://raw.githubusercontent.com/worldvit/megazoncloud-matchingday-sk/main/app/install.sh | bash
+            curl -fsSL https://raw.githubusercontent.com/worldvit/aws-ops-lab/main/app/install.sh | bash
 
   Tg:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup

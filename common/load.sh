@@ -2,7 +2,7 @@
 # 부하 도구 — 부하 전용 EC2(<학번>-d1-loadgen)에서 Session Manager로 실행한다.
 #
 # 사용법
-#   bash /opt/skons/common/load.sh -u http://<ALB DNS> [-r 초당요청수] [-t 실행초] [-m 혼합비율]
+#   bash /opt/opslab/common/load.sh -u http://<ALB DNS> [-r 초당요청수] [-t 실행초] [-m 혼합비율]
 #     -u  대상 URL (필수, 끝에 / 없이)
 #     -r  초당 요청 수 (기본 20)
 #     -t  실행 시간(초). 0이면 Ctrl+C 할 때까지 계속 (기본 0)

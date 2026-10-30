@@ -1,0 +1,5 @@
+lab,dir,type
+1-1,day1/target-unhealthy,타깃 그룹의 타깃이 unhealthy로 바뀌는 장애
+1-2,day1/replace-loop,서버가 계속 새로 만들어지고 사라지는 장애 (몇 분에 걸쳐 서서히 드러남)
+1-3,day1/alb-5xx,사용자 요청 일부 또는 전부가 5xx로 실패하는 장애
+1-4,day1/asg-no-scale,트래픽이 늘었는데 서버가 늘지 않는 장애 — 주입 후 부하를 -r 80 으로 올리세요

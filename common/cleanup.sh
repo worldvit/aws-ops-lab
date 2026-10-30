@@ -4,7 +4,7 @@
 #   SID=s01 bash cleanup.sh night     # 매일 실습 종료 시: 야간 처리(중지·0대 축소)
 #   SID=s01 bash cleanup.sh morning   # 다음 날 시작 시: 야간 처리 원복
 #   SID=s01 bash cleanup.sh status    # 수명표 기준 현재 상태 출력
-#   SID=s01 bash cleanup.sh final     # 과정 종료(Day 8): Owner 태그가 붙은 전체 리소스 삭제
+#   SID=s01 bash cleanup.sh final     # 과정 종료(Day 8): Day 0 스택을 뺀 전체 리소스 삭제
 set -uo pipefail
 : "${SID:?SID 환경변수에 학번을 넣으세요. 예) export SID=s01}"
 export AWS_REGION="${AWS_REGION:-ap-northeast-2}"
@@ -37,7 +37,7 @@ handle() {  # kind name action
 
 status() {
   echo "== $SID 리소스 상태 =="
-  aws resourcegroupstaggingapi get-resources --tag-filters Key=Owner,Values="$SID" Key=Course,Values=skons-ops \
+  aws resourcegroupstaggingapi get-resources --tag-filters Key=Owner,Values="$SID" Key=Course,Values=opslab \
     --query 'ResourceTagMappingList[].ResourceARN' --output text | tr '\t' '\n' | sed 's/^/  /'
   echo "-- Auto Scaling 그룹 --"
   aws autoscaling describe-auto-scaling-groups --filters Name=tag:Owner,Values="$SID" \
@@ -87,9 +87,12 @@ case "$MODE" in
     done
     # 3) 나머지 스택 (기반 스택은 마지막)
     for st in $(aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE UPDATE_ROLLBACK_COMPLETE ROLLBACK_COMPLETE \
-                 --query "StackSummaries[?starts_with(StackName,'$SID-')].StackName" --output text | tr '\t' '\n' | sort -r); do
+                 --query "StackSummaries[?starts_with(StackName,'$SID-') && !contains(StackName,'-d0-')].StackName" --output text | tr '\t' '\n' | sort -r); do
       echo "  스택 삭제: $st"; aws cloudformation delete-stack --stack-name "$st"; aws cloudformation wait stack-delete-complete --stack-name "$st"
     done
+    # 4) 장애 주입 기록 (Day 0 스택과 그 리소스는 남긴다 — 계정 반납 시 계정 제공사가 삭제)
+    N=$(aws ssm get-parameters-by-path --path /opslab/injections --recursive --query 'Parameters[].Name' --output text)
+    [ -n "$N" ] && echo $N | xargs -n 10 aws ssm delete-parameters --names >/dev/null && echo "  주입 기록 삭제"
     status;;
   *) sed -n '2,8p' "$0"; exit 1;;
 esac

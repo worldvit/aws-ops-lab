@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
-  SK오앤에스 AWS 인프라 운영 과정 Day 1 주변 구성(학습 대상 아님).
+  Ops Lab(AWS 인프라 운영 장애 대응 실습) Day 1 주변 구성(학습 대상 아님).
   VPC, 서브넷 4개(퍼블릭 2·프라이빗 2), IGW, NAT Gateway 1개, EC2 역할, 부하 전용 EC2.
   스택 생성 시 --tags 로 Course/Day/Owner 태그를 붙이면 모든 리소스에 전파된다.
 
@@ -109,6 +109,8 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub "${StudentId}-d1-ec2-role"
+      # Day 0 권한 경계: 수강생이 만드는 역할은 경계를 달아야만 만들어진다
+      PermissionsBoundary: !Sub "arn:aws:iam::${AWS::AccountId}:policy/opslab-student-boundary"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -145,8 +147,8 @@ Resources:
         Fn::Base64: |
           #!/bin/bash
           dnf install -y git jq tmux
-          git clone https://github.com/worldvit/megazoncloud-matchingday-sk /opt/skons || true
-          chmod -R a+rX /opt/skons
+          git clone https://github.com/worldvit/aws-ops-lab /opt/opslab || true
+          chmod -R a+rX /opt/opslab
 
 Outputs:
   VpcId:
