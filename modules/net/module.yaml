@@ -1,0 +1,14 @@
+# 모듈 정의 — 과정·Day와 무관하게 이 모듈만의 정보를 둔다.
+id: net
+title: 네트워크 연결 장애
+hours: 8
+requires: L2          # 아침에 배포할 환경 층 (common/start.sh net → L1, L2 + 주변 구성 env.yaml)
+builds: —             # 층을 만들지 않음. 직접 구축하는 것의 완료 상태는 done.yaml (따라잡기: start.sh net full)
+topics: Transit Gateway 라우팅 누락에 따른 구간 단절 · PrivateLink 엔드포인트 DNS 해석 실패 · NAT Gateway 포트 고갈 · Security Group과 NACL 비대칭 설정 · Network Firewall 규칙에 의한 정상 트래픽 차단
+# Lab 목록: Lab ID | 장애 디렉터리(faults/) | 변형 수 | 구분 | 장애 유형(수강생에게 보이는 문구)
+labs:
+  - net-1 | tgw-route       | 3 | 필수 | 기반 VPC에서 사내 서비스 VPC로 가는 요청이 끊기는 장애
+  - net-2 | privatelink-dns | 2 | 필수 | 사내 서비스 서버가 AWS API(STS)를 부르지 못하는 장애
+  - net-3 | nat-port        | 2 | 심화 | 인터넷 방향 연결 일부가 실패하는 장애 (1~2분에 걸쳐 드러남)
+  - net-4 | sg-nacl         | 3 | 필수 | 사내 서비스로 가는 요청이 시간 초과로 실패하는 장애
+  - net-5 | firewall-block  | 3 | 필수 | 사내 서비스로 가는 정상 요청이 막히는 장애 (반영까지 1~2분)

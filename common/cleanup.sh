@@ -24,6 +24,11 @@ status() {
   aws elbv2 describe-load-balancers --query "LoadBalancers[?starts_with(LoadBalancerName,'$SID-')].LoadBalancerName" --output text | tr '\t' '\n' | sed '/^$/d;s/^/  ALB /'
   aws elbv2 describe-target-groups --query "TargetGroups[?starts_with(TargetGroupName,'$SID-')].TargetGroupName" --output text | tr '\t' '\n' | sed '/^$/d;s/^/  TG  /'
   aws autoscaling describe-auto-scaling-groups --query "AutoScalingGroups[?starts_with(AutoScalingGroupName,'$SID-')].AutoScalingGroupName" --output text | tr '\t' '\n' | sed '/^$/d;s/^/  ASG /'
+  aws ec2 describe-transit-gateways --filters Name=tag:Owner,Values="$SID" Name=state,Values=available,pending,deleting \
+    --query 'TransitGateways[].[TransitGatewayId,State]' --output text | sed 's/^/  TGW /'
+  aws network-firewall list-firewalls --query "Firewalls[?starts_with(FirewallName,'$SID-')].FirewallName" --output text 2>/dev/null | tr '\t' '\n' | sed '/^$/d;s/^/  FW  /'
+  aws ec2 describe-vpc-endpoints --filters Name=tag:Owner,Values="$SID" Name=vpc-endpoint-type,Values=Interface \
+    --query 'VpcEndpoints[].[VpcEndpointId,ServiceName]' --output text | sed 's/^/  VPCE /'
 }
 
 delete_all() {

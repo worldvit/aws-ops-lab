@@ -165,3 +165,12 @@ Outputs:
     Export: { Name: !Sub "${StudentId}-base-Ec2Profile" }
   LoadgenId:
     Value: !Ref Loadgen
+  AppRouteTable:
+    Value: !Ref AppRt
+    Export: { Name: !Sub "${StudentId}-base-AppRt" }
+  PubRouteTable:
+    Value: !Ref PubRt
+    Export: { Name: !Sub "${StudentId}-base-PubRt" }
+  NatId:
+    Value: !Ref Nat
+    Export: { Name: !Sub "${StudentId}-base-NatId" }
