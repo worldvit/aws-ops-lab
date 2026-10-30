@@ -9,11 +9,11 @@ PASS=0; FAIL=0
 ok()   { echo "  [PASS] $*"; PASS=$((PASS+1)); }
 ng()   { echo "  [FAIL] $*"; FAIL=$((FAIL+1)); }
 
-ALB_ARN=$(aws elbv2 describe-load-balancers --names "$SID-d1-alb" --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null)
-TG_ARN=$(aws elbv2 describe-target-groups --names "$SID-d1-tg" --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null)
-ASG="$SID-d1-asg"
-[ -z "$ALB_ARN" ] || [ "$ALB_ARN" = "None" ] && { echo "ALB $SID-d1-alb 을 찾을 수 없습니다"; exit 2; }
-[ -z "$TG_ARN" ]  || [ "$TG_ARN" = "None" ]  && { echo "타깃 그룹 $SID-d1-tg 을 찾을 수 없습니다"; exit 2; }
+ALB_ARN=$(aws elbv2 describe-load-balancers --names "$SID-cmp-alb" --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null)
+TG_ARN=$(aws elbv2 describe-target-groups --names "$SID-cmp-tg" --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null)
+ASG="$SID-cmp-asg"
+[ -z "$ALB_ARN" ] || [ "$ALB_ARN" = "None" ] && { echo "ALB $SID-cmp-alb 을 찾을 수 없습니다"; exit 2; }
+[ -z "$TG_ARN" ]  || [ "$TG_ARN" = "None" ]  && { echo "타깃 그룹 $SID-cmp-tg 을 찾을 수 없습니다"; exit 2; }
 LB_DIM=${ALB_ARN#*:loadbalancer/}
 TG_DIM=${TG_ARN##*:}
 
@@ -30,7 +30,7 @@ metric_avg() {
     --period 300 --statistics Average --query 'Datapoints[0].Average' --output text 2>/dev/null | sed 's/None/0/'
 }
 
-echo "== $(date '+%F %T') 정상 상태 판정: $SID / Day1 replace-loop =="
+echo "== $(date '+%F %T') 정상 상태 판정: $SID / cmp replace-loop =="
 
 echo "[1] 타깃 상태"
 DESIRED=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG" --query 'AutoScalingGroups[0].DesiredCapacity' --output text)

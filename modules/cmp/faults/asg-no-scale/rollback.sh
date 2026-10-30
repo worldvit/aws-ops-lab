@@ -1,6 +1,6 @@
 #!/bin/bash
-# Day 1 asg-no-scale — rollback. 직접 실행하지 말고 common/inject.sh 로 호출한다.
-source "$(dirname "$(readlink -f "$0")")/../../common/lib.sh"
+# cmp asg-no-scale — rollback. 직접 실행하지 말고 common/inject.sh 로 호출한다.
+source "$(dirname "$(readlink -f "$0")")/../../lib.sh"
 PREV=$(load prev-lt)
 aws autoscaling update-auto-scaling-group --auto-scaling-group-name "$ASG" --min-size 2 --max-size 4 \
   --launch-template "LaunchTemplateId=$LT_ID,Version=${PREV:-1}" && echo "  용량 2~4, LT 버전 ${PREV:-1} 원복"

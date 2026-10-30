@@ -1,8 +1,8 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
-  Ops Lab(AWS 인프라 운영 장애 대응 실습) Day 1 주변 구성(학습 대상 아님).
-  VPC, 서브넷 4개(퍼블릭 2·프라이빗 2), IGW, NAT Gateway 1개, EC2 역할, 부하 전용 EC2.
-  스택 생성 시 --tags 로 Course/Day/Owner 태그를 붙이면 모든 리소스에 전파된다.
+  [환경 층 L1 — 네트워크 기반] VPC, 서브넷 4개(퍼블릭 2·프라이빗 2), IGW, NAT Gateway 1개,
+  EC2 역할(권한 경계 지정), 부하 전용 EC2. 스택 이름: <학번>-l1 (common/start.sh 가 배포).
+  L0 층(권한 경계)이 먼저 있어야 한다.
 
 Parameters:
   StudentId:
@@ -20,12 +20,12 @@ Resources:
       CidrBlock: 10.0.0.0/16
       EnableDnsHostnames: true
       EnableDnsSupport: true
-      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-vpc" }]
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-base-vpc" }]
 
   Igw:
     Type: AWS::EC2::InternetGateway
     Properties:
-      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-igw" }]
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-base-igw" }]
   IgwAttach:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties: { VpcId: !Ref Vpc, InternetGatewayId: !Ref Igw }
@@ -37,7 +37,7 @@ Resources:
       CidrBlock: 10.0.0.0/24
       AvailabilityZone: !Select [0, !GetAZs ""]
       MapPublicIpOnLaunch: true
-      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-pub-a" }]
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-base-pub-a" }]
   PubC:
     Type: AWS::EC2::Subnet
     Properties:
@@ -45,27 +45,27 @@ Resources:
       CidrBlock: 10.0.1.0/24
       AvailabilityZone: !Select [1, !GetAZs ""]
       MapPublicIpOnLaunch: true
-      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-pub-c" }]
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-base-pub-c" }]
   AppA:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
       CidrBlock: 10.0.10.0/24
       AvailabilityZone: !Select [0, !GetAZs ""]
-      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-app-a" }]
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-base-app-a" }]
   AppC:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
       CidrBlock: 10.0.11.0/24
       AvailabilityZone: !Select [1, !GetAZs ""]
-      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-app-c" }]
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-base-app-c" }]
 
   PubRt:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref Vpc
-      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-pub-rt" }]
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-base-pub-rt" }]
   PubDefault:
     Type: AWS::EC2::Route
     DependsOn: IgwAttach
@@ -82,19 +82,19 @@ Resources:
     DependsOn: IgwAttach
     Properties:
       Domain: vpc
-      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-nat-eip" }]
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-base-nat-eip" }]
   Nat:
     Type: AWS::EC2::NatGateway
     Properties:
       AllocationId: !GetAtt NatEip.AllocationId
       SubnetId: !Ref PubA
-      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-nat" }]
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-base-nat" }]
 
   AppRt:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref Vpc
-      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-app-rt" }]
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-base-app-rt" }]
   AppDefault:
     Type: AWS::EC2::Route
     Properties: { RouteTableId: !Ref AppRt, DestinationCidrBlock: 0.0.0.0/0, NatGatewayId: !Ref Nat }
@@ -108,8 +108,8 @@ Resources:
   Ec2Role:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${StudentId}-d1-ec2-role"
-      # Day 0 권한 경계: 수강생이 만드는 역할은 경계를 달아야만 만들어진다
+      RoleName: !Sub "${StudentId}-base-ec2-role"
+      # L0 권한 경계: 수강생이 만드는 역할은 경계를 달아야만 만들어진다
       PermissionsBoundary: !Sub "arn:aws:iam::${AWS::AccountId}:policy/opslab-student-boundary"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -123,16 +123,16 @@ Resources:
   Ec2Profile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      InstanceProfileName: !Sub "${StudentId}-d1-ec2-profile"
+      InstanceProfileName: !Sub "${StudentId}-base-ec2-profile"
       Roles: [!Ref Ec2Role]
 
   LoadgenSg:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: !Sub "${StudentId}-d1-loadgen-sg"
+      GroupName: !Sub "${StudentId}-base-loadgen-sg"
       GroupDescription: loadgen - egress only
       VpcId: !Ref Vpc
-      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-loadgen-sg" }]
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-base-loadgen-sg" }]
   Loadgen:
     Type: AWS::EC2::Instance
     DependsOn: AppDefault
@@ -142,7 +142,7 @@ Resources:
       SubnetId: !Ref AppA
       IamInstanceProfile: !Ref Ec2Profile
       SecurityGroupIds: [!Ref LoadgenSg]
-      Tags: [{ Key: Name, Value: !Sub "${StudentId}-d1-loadgen" }]
+      Tags: [{ Key: Name, Value: !Sub "${StudentId}-base-loadgen" }]
       UserData:
         Fn::Base64: |
           #!/bin/bash
@@ -153,15 +153,15 @@ Resources:
 Outputs:
   VpcId:
     Value: !Ref Vpc
-    Export: { Name: !Sub "${StudentId}-d1-VpcId" }
+    Export: { Name: !Sub "${StudentId}-base-VpcId" }
   PublicSubnets:
     Value: !Join [",", [!Ref PubA, !Ref PubC]]
-    Export: { Name: !Sub "${StudentId}-d1-PublicSubnets" }
+    Export: { Name: !Sub "${StudentId}-base-PublicSubnets" }
   AppSubnets:
     Value: !Join [",", [!Ref AppA, !Ref AppC]]
-    Export: { Name: !Sub "${StudentId}-d1-AppSubnets" }
+    Export: { Name: !Sub "${StudentId}-base-AppSubnets" }
   Ec2Profile:
     Value: !Ref Ec2Profile
-    Export: { Name: !Sub "${StudentId}-d1-Ec2Profile" }
+    Export: { Name: !Sub "${StudentId}-base-Ec2Profile" }
   LoadgenId:
     Value: !Ref Loadgen

@@ -1,6 +1,6 @@
 #!/bin/bash
-# Day 1 replace-loop — rollback. 직접 실행하지 말고 common/inject.sh 로 호출한다.
-source "$(dirname "$(readlink -f "$0")")/../../common/lib.sh"
+# cmp replace-loop — rollback. 직접 실행하지 말고 common/inject.sh 로 호출한다.
+source "$(dirname "$(readlink -f "$0")")/../../lib.sh"
 aws autoscaling cancel-instance-refresh --auto-scaling-group-name "$ASG" >/dev/null 2>&1 && echo "  인스턴스 새로 고침 취소"
 PREV=$(load prev-lt); GRACE=$(load prev-grace)
 aws autoscaling update-auto-scaling-group --auto-scaling-group-name "$ASG" \

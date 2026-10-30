@@ -1,7 +1,7 @@
 #!/bin/bash
-# Day 1 alb-5xx — inject. 직접 실행하지 말고 common/inject.sh 로 호출한다.
-source "$(dirname "$(readlink -f "$0")")/../../common/lib.sh"
-# 영향 범위: $SID-d1-alb 속성, $SID-d1-asg 헬스체크 유형, 앱 인스턴스의 app 서비스·/etc/app/app.env
+# cmp alb-5xx — inject. 직접 실행하지 말고 common/inject.sh 로 호출한다.
+source "$(dirname "$(readlink -f "$0")")/../../lib.sh"
+# 영향 범위: $SID-cmp-alb 속성, $SID-cmp-asg 헬스체크 유형, 앱 인스턴스의 app 서비스·/etc/app/app.env
 V=$(pick_variant 3)
 case $V in
   1) aws autoscaling update-auto-scaling-group --auto-scaling-group-name "$ASG" --health-check-type EC2

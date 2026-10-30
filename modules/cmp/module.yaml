@@ -1,0 +1,13 @@
+# 모듈 정의 — 과정·Day와 무관하게 이 모듈만의 정보를 둔다.
+id: cmp
+title: 컴퓨팅과 로드밸런싱 장애
+hours: 8
+requires: L1          # 아침에 배포할 환경 층 (common/start.sh cmp)
+builds: L2            # 이 모듈에서 직접 구축하는 층 (따라잡기: common/start.sh cmp full)
+topics: Auto Scaling 미동작 원인 분기 · 헬스체크 실패에 따른 인스턴스 반복 교체 · ALB 5xx 원인 계층 · 타깃 unhealthy 상태 추적 · 교체 루프 차단
+# Lab 목록: Lab ID | 장애 디렉터리(faults/) | 변형 수 | 구분 | 장애 유형(수강생에게 보이는 문구)
+labs:
+  - cmp-1 | target-unhealthy | 3 | 필수 | 타깃 그룹의 타깃이 unhealthy로 바뀌는 장애
+  - cmp-2 | replace-loop     | 3 | 필수 | 서버가 계속 새로 만들어지고 사라지는 장애 (몇 분에 걸쳐 서서히 드러남)
+  - cmp-3 | alb-5xx          | 3 | 필수 | 사용자 요청 일부 또는 전부가 5xx로 실패하는 장애
+  - cmp-4 | asg-no-scale     | 3 | 심화 | 트래픽이 늘었는데 서버가 늘지 않는 장애 — 주입 후 부하를 -r 80 으로 올리세요

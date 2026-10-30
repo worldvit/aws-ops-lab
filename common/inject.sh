@@ -1,11 +1,11 @@
 #!/bin/bash
 # 장애 주입 도구 (수강생용) — CloudShell에서 내 권한으로 실행한다.
-#   bash ~/opslab/common/inject.sh 1-1            Lab 1-1 장애 주입 (가설 수립을 끝낸 뒤)
-#   bash ~/opslab/common/inject.sh done 1-1       해결 기록 (verify.sh 통과 후)
-#   bash ~/opslab/common/inject.sh rollback 1-1   원복 (주입 후 40분 안에 해결하지 못했을 때)
+#   bash ~/opslab/common/inject.sh cmp-1            Lab cmp-1 장애 주입 (가설 수립을 끝낸 뒤)
+#   bash ~/opslab/common/inject.sh done cmp-1       해결 기록 (verify.sh 통과 후)
+#   bash ~/opslab/common/inject.sh rollback cmp-1   원복 (주입 후 40분 안에 해결하지 못했을 때)
 #   bash ~/opslab/common/inject.sh status         내 Lab별 주입·해결·원복 기록 보기
 #
-# 장애 내용은 dayN/<장애명>/inject.sh 에 공개되어 있다. 무작위 변형 하나를 주입하고,
+# 장애 내용은 modules/<모듈ID>/faults/<장애명>/inject.sh 에 공개되어 있다. 무작위 변형 하나를 주입하고,
 # 기록(시각·변형·원복 정보)은 내 계정 SSM Parameter Store /opslab/injections/<Lab> 에 남긴다.
 set -uo pipefail
 : "${SID:?SID 환경변수에 학번을 넣으세요. 예) source ~/opslab-env.sh}"
@@ -16,7 +16,7 @@ now() { TZ=Asia/Seoul date '+%Y-%m-%dT%H:%M:%S%z'; }
 usage() { sed -n '3,6p' "$0" | sed 's/^#//'; exit 1; }
 
 case "${1:-}" in
-  [0-9]-[0-9]) ACTION=inject; LAB=$1 ;;
+  [a-z]*-[0-9]*) ACTION=inject; LAB=$1 ;;
   done|rollback) ACTION=$1; LAB=${2:-}; [ -z "$LAB" ] && usage ;;
   status) ACTION=status; LAB="" ;;
   *) usage ;;
@@ -29,8 +29,9 @@ if [ "$ACTION" = status ]; then
   exit 0
 fi
 
-ROW=$(grep "^$LAB," "$ROOT/common/labs.csv") || { echo "❌ Lab 번호는 $(tail -n +2 "$ROOT/common/labs.csv" | cut -d, -f1 | paste -sd' ') 중 하나입니다"; exit 1; }
-DIR=$(cut -d, -f2 <<<"$ROW"); TYPE=$(cut -d, -f3- <<<"$ROW")
+MOD=${LAB%%-*}; MY="$ROOT/modules/$MOD/module.yaml"
+ROW=$(grep -E "^ *- *$LAB *\|" "$MY" 2>/dev/null) || { echo "❌ Lab ID를 찾지 못했습니다: $LAB (modules/<모듈ID>/module.yaml 의 labs 목록 참고)"; exit 1; }
+DIR="modules/$MOD/faults/$(cut -d'|' -f2 <<<"$ROW" | xargs)"; TYPE=$(cut -d'|' -f5- <<<"$ROW" | sed 's/^ *//')
 META=$(aws ssm get-parameter --name "$P/$LAB" --query Parameter.Value --output text 2>/dev/null) || META='{}'
 STATE=$(jq -r '.state // empty' <<<"$META")
 put_meta() { aws ssm put-parameter --name "$P/$LAB" --type String --overwrite --value "$1" >/dev/null; }

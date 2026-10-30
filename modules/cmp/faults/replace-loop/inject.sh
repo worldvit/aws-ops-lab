@@ -1,7 +1,7 @@
 #!/bin/bash
-# Day 1 replace-loop — inject. 직접 실행하지 말고 common/inject.sh 로 호출한다.
-source "$(dirname "$(readlink -f "$0")")/../../common/lib.sh"
-# 영향 범위: $SID-d1-lt 새 버전 생성, $SID-d1-asg 설정·인스턴스 새로 고침
+# cmp replace-loop — inject. 직접 실행하지 말고 common/inject.sh 로 호출한다.
+source "$(dirname "$(readlink -f "$0")")/../../lib.sh"
+# 영향 범위: $SID-cmp-lt 새 버전 생성, $SID-cmp-asg 설정·인스턴스 새로 고침
 V=$(pick_variant 3)
 # 설정을 바꾸기 전에, 이전 인스턴스 새로 고침이 아직 취소 중이면 끝날 때까지 기다린다(최대 3분).
 for _ in $(seq 36); do

@@ -1,5 +1,5 @@
 #!/bin/bash
-# 부하 도구 — 부하 전용 EC2(<학번>-d1-loadgen)에서 Session Manager로 실행한다.
+# 부하 도구 — 부하 전용 EC2(<학번>-base-loadgen)에서 Session Manager로 실행한다.
 #
 # 사용법
 #   bash /opt/opslab/common/load.sh -u http://<ALB DNS> [-r 초당요청수] [-t 실행초] [-m 혼합비율]

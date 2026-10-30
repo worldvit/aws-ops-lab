@@ -1,18 +1,27 @@
 # aws-ops-lab — Ops Lab (AWS 인프라 운영 장애 대응 실습)
 
-수강생이 자기 AWS 계정에서 장애를 직접 주입·관찰·복구하며 운영 절차를 익히는 8일 실습 자료입니다.
-고객사·계정 제공사와 관계없이 쓰도록 공통 이름(`opslab`)을 사용합니다.
+수강생이 자기 AWS 계정에서 장애를 직접 주입·관찰·복구하며 운영 절차를 익히는 실습 모듈 모음입니다.
+모듈은 과정·고객사·Day 번호와 무관하게 만들고, 과정마다 `courses/<과정ID>.yaml` 하나로 조립합니다.
 
 | 경로 | 내용 |
 |---|---|
+| `courses/<과정ID>.yaml` | 과정 파일: 고객사·계정 제공사·Notion·도메인, Day↔모듈 순서 |
+| `modules/<모듈ID>/module.yaml` | 모듈 정의: 제목, 필요한 환경 층(requires), 직접 구축하는 층(builds), Lab 목록 |
+| `modules/<모듈ID>/faults/<장애명>/{inject,verify,rollback}.sh` | 장애별 3종 세트 |
+| `modules/<모듈ID>/baseline/verify.sh` | 정상 상태 정의(2단계) 판정 |
+| `modules/<모듈ID>/{lib,cleanup}.sh` | 모듈 공통 함수, 매일 정리 훅(CLI로 직접 만든 리소스 삭제) |
+| `layers/l0-guard.yaml` | L0 보호 장치(Day 0에 1회): 강사 읽기 전용 역할, FIS 역할, Budgets, 하위 도메인, 권한 경계 |
+| `layers/l1-network.yaml`, `l2-app.yaml` … | 환경 층 L1(네트워크 기반)·L2(앱 계층 = cmp 완료 상태) … |
+| `common/start.sh <모듈ID> [full]` | 모듈에 필요한 환경 층 배포(full: 직접 구축할 층까지 = 따라잡기) |
+| `common/inject.sh <Lab ID>` | 장애 주입·해결 기록(done)·원복(rollback)·현황(status) |
+| `common/{load,cleanup}.sh` | 부하 도구, 매일 정리(L0 층을 뺀 전부 삭제) |
+| `tools/test-module.sh <모듈ID>` | 모듈 독립 시험(층 배포 → verify → 모든 변형 주입·원복 → 정리) |
 | `app/` | Flask 샘플 앱 (/health · /api · /db · /slow) |
-| `cfn/day0-student.yaml` | Day 0 스택: 강사 읽기 전용 역할, FIS 실험 역할, Budgets 알람, 권한 경계 정책 |
-| `cfn/dayN-*.yaml` | Day별 주변 구성 템플릿 |
-| `start/dayN.yaml` | Day별 시작 템플릿(앞 Day 완료 상태를 한 스택으로) — `start/day2.yaml` 은 Day 1 따라잡기로도 사용 |
-| `common/inject.sh` | 장애 주입·해결 기록·원복·현황 도구 (`bash ~/opslab/common/inject.sh 1-1`) |
-| `common/labs.csv` | Lab 번호 ↔ 장애 디렉터리 ↔ 장애 유형 |
-| `common/{load,cleanup}.sh` | 부하 도구, 매일 정리(Day 0 스택을 뺀 전부 삭제) |
-| `dayN/<장애명>/{inject,verify,rollback}.sh` | 장애별 3종 세트 |
 | `runbook/TEMPLATE.md` | 런북 양식 |
 
-모든 리소스 태그: `Course=opslab`, `Day=<n>`, `Owner=<학번>` · 주입 기록: SSM `/opslab/injections/<Lab>`
+| 모듈 ID | 모듈 | requires | builds |
+|---|---|---|---|
+| cmp | 컴퓨팅과 로드밸런싱 장애 | L1 | L2 |
+| net · data · sec · iac · cicd · auto · rel | (작성 예정) | | |
+
+이름: `<학번>-<모듈ID|base>-<역할>` · 태그: `Course=opslab`, `Module=<모듈ID|base>`, `Owner=<학번>` · Lab ID: `<모듈ID>-<번호>` · 주입 기록: SSM `/opslab/injections/<Lab ID>`

@@ -9,11 +9,11 @@ PASS=0; FAIL=0
 ok()   { echo "  [PASS] $*"; PASS=$((PASS+1)); }
 ng()   { echo "  [FAIL] $*"; FAIL=$((FAIL+1)); }
 
-ALB_ARN=$(aws elbv2 describe-load-balancers --names "$SID-d1-alb" --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null)
-TG_ARN=$(aws elbv2 describe-target-groups --names "$SID-d1-tg" --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null)
-ASG="$SID-d1-asg"
-[ -z "$ALB_ARN" ] || [ "$ALB_ARN" = "None" ] && { echo "ALB $SID-d1-alb 을 찾을 수 없습니다"; exit 2; }
-[ -z "$TG_ARN" ]  || [ "$TG_ARN" = "None" ]  && { echo "타깃 그룹 $SID-d1-tg 을 찾을 수 없습니다"; exit 2; }
+ALB_ARN=$(aws elbv2 describe-load-balancers --names "$SID-cmp-alb" --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null)
+TG_ARN=$(aws elbv2 describe-target-groups --names "$SID-cmp-tg" --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null)
+ASG="$SID-cmp-asg"
+[ -z "$ALB_ARN" ] || [ "$ALB_ARN" = "None" ] && { echo "ALB $SID-cmp-alb 을 찾을 수 없습니다"; exit 2; }
+[ -z "$TG_ARN" ]  || [ "$TG_ARN" = "None" ]  && { echo "타깃 그룹 $SID-cmp-tg 을 찾을 수 없습니다"; exit 2; }
 LB_DIM=${ALB_ARN#*:loadbalancer/}
 TG_DIM=${TG_ARN##*:}
 
@@ -30,7 +30,7 @@ metric_avg() {
     --period 300 --statistics Average --query 'Datapoints[0].Average' --output text 2>/dev/null | sed 's/None/0/'
 }
 
-echo "== $(date '+%F %T') 정상 상태 판정: $SID / Day1 asg-no-scale =="
+echo "== $(date '+%F %T') 정상 상태 판정: $SID / cmp alb-5xx =="
 
 echo "[1] 타깃 상태"
 DESIRED=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG" --query 'AutoScalingGroups[0].DesiredCapacity' --output text)
@@ -57,15 +57,11 @@ RT=$(metric_avg TargetResponseTime)
 awk "BEGIN{exit !($RT <= 0.2)}" && ok "평균 응답시간 $(awk "BEGIN{printf \"%.0f\", $RT*1000}")ms (기준 200ms 이하)" \
   || ng "평균 응답시간 $(awk "BEGIN{printf \"%.0f\", $RT*1000}")ms (기준 200ms 이하)"
 
-echo "[4] 확장 가능 상태"
-read -r MIN MAX <<<"$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG" --query 'AutoScalingGroups[0].[MinSize,MaxSize]' --output text)"
-[ "$MAX" -gt "$MIN" ] && ok "최대 용량 $MAX > 최소 용량 $MIN (확장 여유가 설계되어 있음, 현재 희망 $DESIRED)" || ng "최대 용량 $MAX = 최소 용량 $MIN (확장할 수 없는 설정)"
-POL=$(aws autoscaling describe-policies --auto-scaling-group-name "$ASG" --query 'length(ScalingPolicies[?PolicyType==`TargetTrackingScaling` && Enabled])' --output text)
-[ "$POL" -ge 1 ] && ok "활성화된 대상 추적 정책 $POL개" || ng "활성화된 대상 추적 정책 없음"
-TV=$(aws autoscaling describe-policies --auto-scaling-group-name "$ASG" --policy-types TargetTrackingScaling --query 'ScalingPolicies[0].TargetTrackingConfiguration.TargetValue' --output text)
-awk "BEGIN{exit !($TV <= 1000)}" 2>/dev/null && ok "대상 추적 목표값 ${TV%.*} (기준 1000 이하)" || ng "대상 추적 목표값 ${TV%.*} (기준 1000 이하)"
-FAILED=$(aws autoscaling describe-scaling-activities --auto-scaling-group-name "$ASG" --max-items 5 --query 'length(Activities[?StatusCode==`Failed`] || `[]`)' --output text | head -1)
-[ "${FAILED:-0}" -eq 0 ] && ok "최근 활동 5건 중 실패 0건" || ng "최근 활동 5건 중 실패 ${FAILED}건"
+echo "[4] 5xx 재발 방지 설정"
+IDLE=$(aws elbv2 describe-load-balancer-attributes --load-balancer-arn "$ALB_ARN" --query "Attributes[?Key=='idle_timeout.timeout_seconds'].Value" --output text)
+[ "$IDLE" -ge 35 ] && ok "ALB 유휴 제한 시간 ${IDLE}초 (앱 처리 시간보다 김)" || ng "ALB 유휴 제한 시간 ${IDLE}초 (앱 최대 처리 시간 35초보다 짧음)"
+ALARMS=$(aws cloudwatch describe-alarms --alarm-name-prefix "$SID-cmp-" --query 'length(MetricAlarms[?MetricName==`HTTPCode_ELB_5XX_Count` || MetricName==`HTTPCode_Target_5XX_Count`])' --output text)
+[ "$ALARMS" -ge 2 ] && ok "5xx 알람 $ALARMS개 (ELB·타깃 구분)" || ng "5xx 알람 $ALARMS개 (ELB 5xx, 타깃 5xx 각각 필요)"
 
 echo "== 결과: PASS $PASS / FAIL $FAIL =="
 if [ "$FAIL" -eq 0 ]; then echo "판정: 정상 (verify 통과) — 기록표에 '복구 완료 시각'과 '통과'를 적으세요"; exit 0

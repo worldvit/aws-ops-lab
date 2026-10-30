@@ -1,0 +1,22 @@
+# 과정 파일 — 과정마다 이 파일만 새로 만든다. 모듈·스크립트에는 과정 값을 넣지 않는다.
+id: skons
+customer: SK오앤에스
+audience: SK오앤에스 신입사원(직원) 직무교육
+parent_course: 「AWS 운영 역량 강화 과정」 2단계 AWS 인프라 운영(64H, 8일)
+next_stage: 4단계 종합 평가와 런북(런북 작성과 교차 검증)
+account_provider: 메가존클라우드
+notion_root: SK오앤스
+instructor_domain: adfontes.cloud
+instructor_account_id: TBD        # Day 0에 확정
+# Day ↔ 모듈 (모듈 ID는 modules/ 의 디렉터리 이름)
+days:
+  1: cmp
+  2: net
+  3: data
+  4: sec
+  5: iac
+  6: cicd
+  7: auto
+  8: rel
+# 과정별 [필수]/[심화] 조정이 필요하면 여기에 적는다. 예) override: { cmp-4: 필수 }
+override: {}
