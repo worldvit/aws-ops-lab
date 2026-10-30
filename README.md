@@ -8,10 +8,10 @@
 | `app/` | Flask 샘플 앱 (/health · /api · /db · /slow) |
 | `cfn/day0-student.yaml` | Day 0 스택: 강사 읽기 전용 역할, FIS 실험 역할, Budgets 알람, 권한 경계 정책 |
 | `cfn/dayN-*.yaml` | Day별 주변 구성 템플릿 |
-| `catchup/dayN.yaml` | Day별 따라잡기(구축 완료 상태) 템플릿 |
+| `start/dayN.yaml` | Day별 시작 템플릿(앞 Day 완료 상태를 한 스택으로) — `start/day2.yaml` 은 Day 1 따라잡기로도 사용 |
 | `common/inject.sh` | 장애 주입·해결 기록·원복·현황 도구 (`bash ~/opslab/common/inject.sh 1-1`) |
 | `common/labs.csv` | Lab 번호 ↔ 장애 디렉터리 ↔ 장애 유형 |
-| `common/{load,cleanup}.sh`, `common/lifecycle.csv` | 부하 도구, 비용 정리, 리소스 수명표 |
+| `common/{load,cleanup}.sh` | 부하 도구, 매일 정리(Day 0 스택을 뺀 전부 삭제) |
 | `dayN/<장애명>/{inject,verify,rollback}.sh` | 장애별 3종 세트 |
 | `runbook/TEMPLATE.md` | 런북 양식 |
 

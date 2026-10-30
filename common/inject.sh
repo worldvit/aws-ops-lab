@@ -58,7 +58,7 @@ done)
 rollback)
   [ "$STATE" = injected ] || { echo "❌ Lab $LAB 에 원복할 주입 기록이 없습니다."; exit 1; }
   read -r -p "원복하면 이 Lab의 진단 기회가 끝납니다. 계속할까요? (y/N) " a; [ "$a" = y ] || exit 1
-  bash "$ROOT/$DIR/rollback.sh" || { echo "❌ 원복 중 오류 — 따라잡기 템플릿(catchup/)으로 다시 만드세요."; exit 1; }
+  bash "$ROOT/$DIR/rollback.sh" || { echo "❌ 원복 중 오류 — cleanup.sh 로 그날 리소스를 정리하고 시작 템플릿과 그날 구축을 다시 하세요."; exit 1; }
   put_meta "$(jq -c --arg t "$(now)" '.state="rolled_back" | .rolled_back_at=$t' <<<"$META")"
   echo "✅ 원복했습니다. 3~5분 뒤 verify.sh 로 정상 상태를 확인하고, 정답 요약 토글로 원인을 대조한 뒤 런북을 작성하세요." ;;
 esac
