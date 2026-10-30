@@ -1,0 +1,100 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  [수강생 계정, Day 0에 1회] 강사 계정이 이 계정을 들여다보고(readonly), 장애 주입 서비스가
+  Day 1 실습 리소스에만 장애를 주입·원복할 수 있도록(operator) 교차 계정 역할 2개를 만든다.
+  강사 계정의 장애 주입 서비스 스택(skons-injector-lambda 역할)이 먼저 있어야 한다.
+
+Parameters:
+  InstructorAccountId:
+    Type: String
+    AllowedPattern: "[0-9]{12}"
+    Description: 강사 AWS 계정 ID (강사가 알려 줌)
+
+Resources:
+  ReadOnly:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: skons-instructor-readonly
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { AWS: !Sub "arn:aws:iam::${InstructorAccountId}:root" }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/ReadOnlyAccess
+
+  Operator:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: skons-instructor-operator
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !Sub "arn:aws:iam::${InstructorAccountId}:role/skons-injector-lambda"
+                - !Sub "arn:aws:iam::${InstructorAccountId}:root"
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: skons-fault-injection
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: Read
+                Effect: Allow
+                Action:
+                  - elasticloadbalancing:Describe*
+                  - autoscaling:Describe*
+                  - ec2:Describe*
+                  - ssm:ListCommandInvocations
+                  - ssm:GetCommandInvocation
+                Resource: "*"
+              # 아래 변경 권한은 과정 태그(Course=skons-ops)가 붙은 리소스에만 허용
+              - Sid: ElbOnCourseResources
+                Effect: Allow
+                Action:
+                  - elasticloadbalancing:ModifyTargetGroup
+                  - elasticloadbalancing:ModifyLoadBalancerAttributes
+                Resource: "*"
+                Condition: { StringEquals: { "aws:ResourceTag/Course": skons-ops } }
+              - Sid: AsgOnCourseResources
+                Effect: Allow
+                Action:
+                  - autoscaling:UpdateAutoScalingGroup
+                  - autoscaling:SuspendProcesses
+                  - autoscaling:ResumeProcesses
+                  - autoscaling:StartInstanceRefresh
+                  - autoscaling:CancelInstanceRefresh
+                Resource: "*"
+                Condition: { StringEquals: { "autoscaling:ResourceTag/Course": skons-ops } }
+              - Sid: Ec2OnCourseResources
+                Effect: Allow
+                Action:
+                  - ec2:CreateLaunchTemplateVersion
+                  - ec2:AuthorizeSecurityGroupIngress
+                  - ec2:RevokeSecurityGroupIngress
+                Resource: "*"
+                Condition: { StringEquals: { "aws:ResourceTag/Course": skons-ops } }
+              - Sid: RunCommandDocument
+                Effect: Allow
+                Action: ssm:SendCommand
+                Resource: "arn:aws:ssm:*::document/AWS-RunShellScript"
+              - Sid: RunCommandOnCourseInstances
+                Effect: Allow
+                Action: ssm:SendCommand
+                Resource: !Sub "arn:aws:ec2:*:${AWS::AccountId}:instance/*"
+                Condition: { StringEquals: { "ssm:resourceTag/Course": skons-ops } }
+              # 시작 템플릿 새 버전을 ASG에 붙일 때 필요
+              - Sid: PassEc2Role
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/*-d1-ec2-role"
+
+Outputs:
+  OperatorRoleArn:
+    Value: !GetAtt Operator.Arn
+  ReadOnlyRoleArn:
+    Value: !GetAtt ReadOnly.Arn
