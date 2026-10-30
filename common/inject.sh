@@ -42,7 +42,9 @@ inject)
   # 지난 시도의 원복 정보는 지운다
   OLD=$(aws ssm get-parameters-by-path --path "$P/$LAB" --query 'Parameters[].Name' --output text 2>/dev/null)
   [ -n "$OLD" ] && aws ssm delete-parameters --names $OLD >/dev/null
-  bash "$ROOT/$DIR/inject.sh" >/dev/null || { echo "❌ 주입 실패 — 위 오류를 확인하세요."; exit 1; }
+  bash "$ROOT/$DIR/inject.sh" >/dev/null || {
+    echo "❌ 주입 실패 — 위 오류를 확인하세요. 일부 바뀐 설정을 되돌립니다."
+    bash "$ROOT/$DIR/rollback.sh" >/dev/null 2>&1; exit 1; }
   T=$(now); ATT=$(( $(jq -r '.attempt // 0' <<<"$META") + 1 ))
   put_meta "$(jq -nc --arg l "$LAB" --arg d "$DIR" --arg t "$T" --argjson a "$ATT" \
     '{lab:$l, fault:$d, state:"injected", injected_at:$t, attempt:$a}')"
