@@ -19,7 +19,7 @@ if [ -n "$TG" ] && [ "$TG" != None ] && ! cfn_managed "$TG"; then   # 리스너�
   for _ in 1 2 3 4 5 6; do aws elbv2 delete-target-group --target-group-arn "$TG" 2>/dev/null && { echo "  TG 삭제"; break; }; sleep 10; done
 fi
 LT=$(aws ec2 describe-launch-templates --launch-template-names "$SID-cmp-lt" --query 'LaunchTemplates[0].Tags[?Key==`aws:cloudformation:stack-name`]|[0].Value' --output text 2>/dev/null)
-[ "$LT" = None ] && aws ec2 delete-launch-template --launch-template-name "$SID-cmp-lt" >/dev/null && echo "  LT 삭제"
+[ "$LT" = None ] && ! aws cloudformation describe-stacks --stack-name "$SID-l2" >/dev/null 2>&1 && aws ec2 delete-launch-template --launch-template-name "$SID-cmp-lt" >/dev/null && echo "  LT 삭제"
 sleep 20   # 네트워크 인터페이스 해제 대기
 for sg in app alb; do
   id=$(aws ec2 describe-security-groups --filters Name=group-name,Values="$SID-cmp-$sg-sg" --query 'SecurityGroups[?!(Tags[?Key==`aws:cloudformation:stack-name`])].GroupId|[0]' --output text 2>/dev/null)
