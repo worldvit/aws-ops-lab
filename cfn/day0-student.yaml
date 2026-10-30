@@ -25,6 +25,10 @@ Parameters:
     Default: OrganizationAccountAccessRole
     Description: 계정 제공사 관리용 IAM 역할 이름(와일드카드 * 가능). 강사가 Day 0에 확인해 알려 줌
 
+Conditions:
+  # 같은 주소를 두 번 넣으면 Budgets가 거부하므로, 같으면 한 번만 넣는다
+  SameEmail: !Equals [!Ref StudentEmail, !Ref InstructorEmail]
+
 Resources:
   # ── 강사 읽기 전용 역할: 강사는 확인만 하고 변경하지 않는다
   InstructorReadOnly:
@@ -69,9 +73,10 @@ Resources:
         BudgetLimit: { Amount: 10, Unit: USD }
       NotificationsWithSubscribers:
         - Notification: { NotificationType: ACTUAL, ComparisonOperator: GREATER_THAN, Threshold: 100, ThresholdType: PERCENTAGE }
-          Subscribers:
-            - { SubscriptionType: EMAIL, Address: !Ref StudentEmail }
-            - { SubscriptionType: EMAIL, Address: !Ref InstructorEmail }
+          Subscribers: !If
+            - SameEmail
+            - [{ SubscriptionType: EMAIL, Address: !Ref StudentEmail }]
+            - [{ SubscriptionType: EMAIL, Address: !Ref StudentEmail }, { SubscriptionType: EMAIL, Address: !Ref InstructorEmail }]
   TotalBudget:
     Type: AWS::Budgets::Budget
     Properties:
@@ -82,9 +87,10 @@ Resources:
         BudgetLimit: { Amount: 100, Unit: USD }
       NotificationsWithSubscribers:
         - Notification: { NotificationType: ACTUAL, ComparisonOperator: GREATER_THAN, Threshold: 100, ThresholdType: PERCENTAGE }
-          Subscribers:
-            - { SubscriptionType: EMAIL, Address: !Ref StudentEmail }
-            - { SubscriptionType: EMAIL, Address: !Ref InstructorEmail }
+          Subscribers: !If
+            - SameEmail
+            - [{ SubscriptionType: EMAIL, Address: !Ref StudentEmail }]
+            - [{ SubscriptionType: EMAIL, Address: !Ref StudentEmail }, { SubscriptionType: EMAIL, Address: !Ref InstructorEmail }]
 
   # ── 권한 경계: "관리자 권한에서 보호 대상에 대한 작업만 뺀" 울타리
   Boundary:
