@@ -62,7 +62,7 @@ read -r HCT GRACE <<<"$(aws autoscaling describe-auto-scaling-groups --auto-scal
 [ "$HCT" = "ELB" ] && ok "헬스체크 유형 ELB" || ng "헬스체크 유형 $HCT (ELB 권장)"
 [ "$GRACE" -ge 120 ] && ok "유예 기간 ${GRACE}초 (앱 기동 시간보다 길어야 함)" || ng "유예 기간 ${GRACE}초 (앱 기동 시간보다 짧음)"
 CHURN=$(aws autoscaling describe-scaling-activities --auto-scaling-group-name "$ASG" --max-items 30 \
-  --query "length(Activities[?StartTime>='$(date -u -d '-10 min' +%FT%TZ)' && contains(Description, 'Terminating')])" --output text)
+  --query "length(Activities[?StartTime>='$(date -u -d '-10 min' +%FT%TZ)' && contains(Description, 'Terminating')] || \`[]\`)" --output text | head -1)
 [ "${CHURN:-0}" -le 0 ] && ok "최근 10분 종료 활동 0건 (교체 루프 멈춤)" || ng "최근 10분 종료 활동 ${CHURN}건 — 10분 뒤 다시 확인"
 
 echo "== 결과: PASS $PASS / FAIL $FAIL =="

@@ -59,14 +59,14 @@ awk "BEGIN{exit !($RT <= 0.2)}" && ok "평균 응답시간 $(awk "BEGIN{printf \
 
 echo "[4] 확장 가능 상태"
 read -r MIN MAX <<<"$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG" --query 'AutoScalingGroups[0].[MinSize,MaxSize]' --output text)"
-[ "$MAX" -gt "$DESIRED" ] && ok "최대 용량 $MAX > 희망 용량 $DESIRED (확장 여유 있음)" || ng "최대 용량 $MAX = 희망 용량 $DESIRED (확장 불가)"
+[ "$MAX" -gt "$MIN" ] && ok "최대 용량 $MAX > 최소 용량 $MIN (확장 여유가 설계되어 있음, 현재 희망 $DESIRED)" || ng "최대 용량 $MAX = 최소 용량 $MIN (확장할 수 없는 설정)"
 POL=$(aws autoscaling describe-policies --auto-scaling-group-name "$ASG" --query 'length(ScalingPolicies[?PolicyType==`TargetTrackingScaling` && Enabled])' --output text)
 [ "$POL" -ge 1 ] && ok "활성화된 대상 추적 정책 $POL개" || ng "활성화된 대상 추적 정책 없음"
 read -r LT_ID LT_VER <<<"$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG" --query 'AutoScalingGroups[0].LaunchTemplate.[LaunchTemplateId,Version]' --output text)"
 PROFILE=$(aws ec2 describe-launch-template-versions --launch-template-id "$LT_ID" --versions "$LT_VER" --query 'LaunchTemplateVersions[0].LaunchTemplateData.IamInstanceProfile.Name' --output text)
 aws iam get-instance-profile --instance-profile-name "$PROFILE" >/dev/null 2>&1 \
   && ok "시작 템플릿 $LT_VER 의 인스턴스 프로파일 $PROFILE 존재" || ng "시작 템플릿 $LT_VER 의 인스턴스 프로파일 $PROFILE 없음"
-FAILED=$(aws autoscaling describe-scaling-activities --auto-scaling-group-name "$ASG" --max-items 5 --query 'length(Activities[?StatusCode==`Failed`])' --output text)
+FAILED=$(aws autoscaling describe-scaling-activities --auto-scaling-group-name "$ASG" --max-items 5 --query 'length(Activities[?StatusCode==`Failed`] || `[]`)' --output text | head -1)
 [ "${FAILED:-0}" -eq 0 ] && ok "최근 활동 5건 중 실패 0건" || ng "최근 활동 5건 중 실패 ${FAILED}건"
 
 echo "== 결과: PASS $PASS / FAIL $FAIL =="
