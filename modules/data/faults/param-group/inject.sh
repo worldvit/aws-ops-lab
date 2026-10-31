@@ -11,8 +11,9 @@ case $V in
        --parameters ParameterName=default_transaction_read_only,ParameterValue=on,ApplyMethod=immediate >/dev/null ;;
   2) aws rds modify-db-cluster-parameter-group --db-cluster-parameter-group-name "$CPG" \
        --parameters ParameterName=statement_timeout,ParameterValue=1,ApplyMethod=immediate >/dev/null ;;
-  3) aws rds modify-db-parameter-group --db-parameter-group-name "$IPG" \
-       --parameters ParameterName=max_connections,ParameterValue=6,ApplyMethod=pending-reboot >/dev/null &&
+  3) # Aurora 는 max_wal_senders 와 맞추느라 24 미만 값은 24로 올린다 — 처음부터 24로 둔다(부하 시 연결 거부)
+     aws rds modify-db-parameter-group --db-parameter-group-name "$IPG" \
+       --parameters ParameterName=max_connections,ParameterValue=24,ApplyMethod=pending-reboot >/dev/null &&
      sleep 15 && wait_cluster 600 &&       # 파라미터 그룹 변경 직후 인스턴스는 잠시 modifying(applying) — 끝난 뒤 재시작
      aws rds reboot-db-instance --db-instance-identifier "$WRITER_ID" >/dev/null ;;
 esac || exit 1
