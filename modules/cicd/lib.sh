@@ -57,3 +57,25 @@ good_release() { local r; r=$(release); [ "$r" = none ] && r=v1; echo "$r"; }
 redeploy_good() {  # $1=버전(기본: 현재 기록된 릴리스) → 결과 상태
   local v e; v=${1:-$(good_release)}; e=$(start_release "$v" 0) || return 1; AUTO_APPROVE=1 wait_exec "$e" 1800
 }
+# ── 장애 스크립트 도우미
+DENY=opslab-fault-deny                      # 장애가 역할에 붙이는 인라인 거부 정책 이름
+put_deny() {  # $1=역할 $2=액션(JSON 배열 문자열) $3=리소스(기본 *)
+  aws iam put-role-policy --role-name "$1" --policy-name "$DENY" --policy-document \
+    "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Deny\",\"Action\":$2,\"Resource\":\"${3:-*}\"}]}"
+}
+del_deny() { aws iam delete-role-policy --role-name "$1" --policy-name "$DENY" 2>/dev/null || true; }
+new_ver() { echo "r$(date +%m%d%H%M%S)"; }   # 장애 실습용 새 릴리스 번호
+traffic() {  # $1=초 — CloudShell 에서 :80·:8000 /api 로 초당 약 4건을 보낸다(알람이 반응할 만큼). 백그라운드
+  local dns; dns=$(alb_dns)
+  setsid nohup bash -c "end=\$((SECONDS+$1)); while [ \$SECONDS -lt \$end ]; do curl -s -o /dev/null -m 3 http://$dns/api; curl -s -o /dev/null -m 3 http://$dns:8000/api; sleep 0.25; done" >/dev/null 2>&1 < /dev/null &
+}
+retry_exec() {  # $1=실행 ID — 실패한 단계를 처음부터 다시(모든 액션) 실행하고 끝까지 기다린다(자동 승인). 3번까지
+  local st r i; for i in 1 2 3; do
+    st=$(aws codepipeline list-action-executions --pipeline-name "$PIPE" --filter pipelineExecutionId="$1" \
+      --query 'actionExecutionDetails[?status==`Failed`].stageName | [0]' --output text)
+    [ -n "$st" ] && [ "$st" != None ] || { exec_status "$1"; return 0; }
+    aws codepipeline retry-stage-execution --pipeline-name "$PIPE" --stage-name "$st" --pipeline-execution-id "$1" --retry-mode ALL_ACTIONS >/dev/null 2>&1 || true
+    sleep 15; r=$(AUTO_APPROVE=1 wait_exec "$1" 1800); [ "$r" = Succeeded ] && { echo "$r"; return 0; }
+    sleep 30   # IAM 전파 등
+  done; echo "$r"
+}

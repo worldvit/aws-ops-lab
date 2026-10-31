@@ -25,7 +25,7 @@ for td in $(aws ecs list-task-definitions --family-prefix "$SID-cicd-app" --stat
   aws ecs deregister-task-definition --task-definition "$td" >/dev/null; done
 N=$(aws ssm get-parameters-by-path --path /opslab/cicd --recursive --query 'Parameters[].Name' --output text)
 [ -n "${N// /}" ] && aws ssm delete-parameters --names $N >/dev/null && echo "  SSM /opslab/cicd/* 삭제"
-# 장애 실습이 역할에 붙인 인라인 정책은 역할과 함께 스택이 지운다. base 역할(L1)에 붙인 것만 따로 지운다
-for p in $(aws iam list-role-policies --role-name "$SID-base-ec2-role" --query 'PolicyNames[?starts_with(@,`opslab-cicd-`)]' --output text 2>/dev/null); do
-  aws iam delete-role-policy --role-name "$SID-base-ec2-role" --policy-name "$p" && echo "  인라인 정책 삭제: $p"; done
+# 장애 실습이 역할에 붙인 거부 정책(opslab-fault-deny)이 남아 있으면 역할(스택) 삭제가 실패한다 — 먼저 지운다
+for r in pipeline build deploy cfn task-exec; do aws iam delete-role-policy --role-name "$SID-cicd-$r-role" --policy-name opslab-fault-deny 2>/dev/null && echo "  거부 정책 삭제: $SID-cicd-$r-role"; done
+aws iam delete-role-policy --role-name "$SID-base-ec2-role" --policy-name opslab-fault-deny 2>/dev/null && echo "  거부 정책 삭제: $SID-base-ec2-role"
 exit 0
