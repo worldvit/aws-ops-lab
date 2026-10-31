@@ -6,7 +6,8 @@ if ! aws iam get-role-policy --role-name "$SID-cicd-build-role" --policy-name ec
   P=$(load ecr_push); [ -n "$P" ] && [ "$P" != None ] || P="{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"ecr:GetAuthorizationToken\",\"Resource\":\"*\"},{\"Effect\":\"Allow\",\"Action\":[\"ecr:BatchCheckLayerAvailability\",\"ecr:InitiateLayerUpload\",\"ecr:UploadLayerPart\",\"ecr:CompleteLayerUpload\",\"ecr:PutImage\",\"ecr:BatchGetImage\",\"ecr:GetDownloadUrlForLayer\"],\"Resource\":\"arn:aws:ecr:$AWS_REGION:$ACCT:repository/$SID-cicd-app\"}]}"
   aws iam put-role-policy --role-name "$SID-cicd-build-role" --policy-name ecr-push --policy-document "$P" && echo "  빌드 역할 ecr-push 정책 복구"
 fi
-aws codebuild update-project --name "$PROJ" --environment "$(aws codebuild batch-get-projects --names "$PROJ" --query 'projects[0].environment' --output json | jq -c '.privilegedMode=true')" >/dev/null && echo "  privilegedMode=true"
+U=$(aws cloudformation describe-stacks --stack-name "$ENVSTACK" --query "Stacks[0].Outputs[?OutputKey=='EcrUri'].OutputValue" --output text)
+aws codebuild update-project --name "$PROJ" --environment "$(aws codebuild batch-get-projects --names "$PROJ" --query 'projects[0].environment' --output json | jq -c --arg u "$U" '.privilegedMode=true | .environmentVariables |= map(if .name=="ECR_URI" then .value=$u else . end)')" >/dev/null && echo "  privilegedMode=true, ECR_URI=$U"
 aws codebuild update-project --name "$PROJ" --source type=CODEPIPELINE,buildspec=cicd/buildspec.yml >/dev/null && echo "  buildspec=cicd/buildspec.yml"
 sleep 20
 E=$(load exec); r=$(retry_exec "$E"); echo "  실행 ${E:0:8} 다시 실행: $r"

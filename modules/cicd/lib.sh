@@ -31,10 +31,9 @@ start_release() {  # $1=AppVersion $2=ErrorRate → 실행 ID
 }
 exec_status() { aws codepipeline get-pipeline-execution --pipeline-name "$PIPE" --pipeline-execution-id "$1" --query pipelineExecution.status --output text 2>/dev/null; }
 last_exec() { aws codepipeline list-pipeline-executions --pipeline-name "$PIPE" --max-items 1 --query 'pipelineExecutionSummaries[0].[pipelineExecutionId,status]' --output text 2>/dev/null | head -1; }
-approve_if_waiting() {  # $1=실행 ID — 이 실행의 승인 단계가 기다리고 있으면 승인
+approve_if_waiting() {  # 승인 단계가 기다리고 있으면 승인($1 실행 ID 는 기록용 — 대기열에서 앞선 실행이 막고 있어도 풀어 준다)
   local tok; tok=$(aws codepipeline get-pipeline-state --name "$PIPE" --query "stageStates[?stageName=='Release'].actionStates[] | [?actionName=='Approve'].latestExecution | [?status=='InProgress'].token | [0]" --output text 2>/dev/null)
   [ -n "$tok" ] && [ "$tok" != None ] || return 1
-  [ "$(aws codepipeline get-pipeline-state --name "$PIPE" --query "stageStates[?stageName=='Release'].latestExecution.pipelineExecutionId | [0]" --output text)" = "$1" ] || return 1
   aws codepipeline put-approval-result --pipeline-name "$PIPE" --stage-name Release --action-name Approve --token "$tok" \
     --result summary="opslab auto approve",status=Approved >/dev/null && echo "  (승인 완료)" >&2
 }
