@@ -13,6 +13,7 @@ case $V in
        --parameters ParameterName=statement_timeout,ParameterValue=1,ApplyMethod=immediate >/dev/null ;;
   3) aws rds modify-db-parameter-group --db-parameter-group-name "$IPG" \
        --parameters ParameterName=max_connections,ParameterValue=6,ApplyMethod=pending-reboot >/dev/null &&
-     sleep 20 && aws rds reboot-db-instance --db-instance-identifier "$WRITER_ID" >/dev/null ;;
+     sleep 15 && wait_cluster 600 &&       # 파라미터 그룹 변경 직후 인스턴스는 잠시 modifying(applying) — 끝난 뒤 재시작
+     aws rds reboot-db-instance --db-instance-identifier "$WRITER_ID" >/dev/null ;;
 esac || exit 1
 record $V
