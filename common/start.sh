@@ -42,4 +42,6 @@ done
 # 모듈 주변 구성(env.yaml)과, 따라잡기일 때 모듈 완료 상태(done.yaml)
 [ -f "$ROOT/modules/$MOD/env.yaml" ] && deploy "$SID-$MOD-env" "$ROOT/modules/$MOD/env.yaml" "$MOD"
 [ "$KEY" = builds ] && [ -f "$ROOT/modules/$MOD/done.yaml" ] && deploy "$SID-$MOD-done" "$ROOT/modules/$MOD/done.yaml" "$MOD"
+# 따라잡기: 완료 상태를 템플릿 하나로 만들 수 없는 모듈은 full.sh(따라하기 명령 모음)를 실행한다
+[ "$KEY" = builds ] && [ -f "$ROOT/modules/$MOD/full.sh" ] && { source ~/opslab-env.sh; bash "$ROOT/modules/$MOD/full.sh" || exit 1; }
 echo "✅ $MOD 시작 준비 완료. 'source ~/opslab-env.sh' 로 변수를 불러오세요."

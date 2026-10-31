@@ -27,6 +27,7 @@
 | net | 네트워크 연결 장애 (주변 구성 env.yaml, 완료 상태 done.yaml, 경로 점검 probe.sh) | L2 | — |
 | data | 데이터 계층 운영 (Aurora PostgreSQL, 점검 probe.sh, L3 초기화 layers/l3-data.init.sh) | L2 | L3 |
 | sec | 시크릿과 인증 운영 (KMS·Secrets Manager·Vault — 동적 자격증명·PKI·Transit, 점검 probe.sh, L4 초기화 layers/l4-secret.init.sh) | L3 | L4 |
+| iac | IaC 운영과 드리프트 (수강생 스택 modules/iac/iac-app.yaml, 따라잡기 full.sh) | L2 | — |
 | sec · iac · cicd · auto · rel | (작성 예정) | | |
 
 이름: `<학번>-<모듈ID|base>-<역할>` · 태그: `Course=opslab`, `Module=<모듈ID|base>`, `Owner=<학번>` · Lab ID: `<모듈ID>-<번호>` · 주입 기록: SSM `/opslab/injections/<Lab ID>`

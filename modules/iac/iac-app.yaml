@@ -1,0 +1,146 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  [iac 모듈 — 수강생이 직접 배포·운영하는 스택] 스택 이름: <학번>-iac-app (L1·L2 층이 먼저 있어야 한다)
+  ALB /promo 규칙(고정 응답), 배포 산출물 S3 버킷, 관리용 보안 그룹, 배포 전 사전 점검(사용자 지정 리소스 + Lambda).
+  배포는 변경셋으로 검토한 뒤 실행한다.
+
+Parameters:
+  StudentId:
+    Type: String
+    AllowedPattern: "s[0-9]{2}"
+  PromoText:
+    Type: String
+    Default: v1
+    Description: /promo 가 돌려줄 문구(릴리스 버전)
+  AdminSgName:
+    Type: String
+    Default: ""
+    Description: 관리용 보안 그룹 이름(비우면 <학번>-iac-admin-sg)
+  RulePriority:
+    Type: Number
+    Default: 10
+    Description: ALB 리스너 규칙 우선순위(리스너 안에서 겹치면 안 됨)
+  BucketSuffix:
+    Type: String
+    Default: ""
+    Description: 산출물 버킷 이름 뒤에 붙는 글자(바꾸면 버킷이 새로 만들어짐 — 교체)
+
+Conditions:
+  DefaultSgName: !Equals [!Ref AdminSgName, ""]
+
+Resources:
+  # 배포 산출물 버킷 — 교체·스택 삭제 때도 지우지 않고 남긴다(Retain)
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "${StudentId}-iac-artifacts-${AWS::AccountId}${BucketSuffix}"
+      VersioningConfiguration: { Status: Enabled }
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # 배포 전 사전 점검: 외부 시스템(SSM /opslab/iac/dependency, 버킷의 config/allowed.json)이 이 릴리스를 받을 준비가 됐는지
+  CheckRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${StudentId}-iac-check-role"
+      PermissionsBoundary: !Sub "arn:aws:iam::${AWS::AccountId}:policy/opslab-student-boundary"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - { Effect: Allow, Principal: { Service: lambda.amazonaws.com }, Action: sts:AssumeRole }
+      ManagedPolicyArns: [arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]
+      Policies:
+        - PolicyName: read-dependency
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ssm:GetParameter
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/opslab/iac/*"
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub "arn:aws:s3:::${StudentId}-iac-artifacts-${AWS::AccountId}*/config/*"
+  CheckFn:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${StudentId}-iac-precheck"
+      Runtime: python3.12
+      Handler: index.handler
+      Timeout: 30
+      Role: !GetAtt CheckRole.Arn
+      Code:
+        ZipFile: |
+          import json, boto3, cfnresponse
+          def handler(event, context):
+              p = event.get("ResourceProperties", {})
+              rel, bucket = p.get("PromoText", ""), p.get("Bucket", "")
+              try:
+                  if event["RequestType"] == "Delete":
+                      return cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                  # 1) 외부 시스템 상태: ready | maintenance | only:<버전,...>
+                  try:
+                      st = boto3.client("ssm").get_parameter(Name="/opslab/iac/dependency")["Parameter"]["Value"]
+                  except boto3.client("ssm").exceptions.ParameterNotFound:
+                      st = "ready"
+                  if st == "maintenance":
+                      raise Exception("dependency is in maintenance (SSM /opslab/iac/dependency)")
+                  if st.startswith("only:") and rel not in st[5:].split(","):
+                      raise Exception(f"dependency accepts only {st[5:]} - release {rel} rejected (SSM /opslab/iac/dependency)")
+                  # 2) 허용 릴리스 목록: s3://<버킷>/config/allowed.json {"allowed": ["v1","v2"]}
+                  allowed = None
+                  if bucket:
+                      try:
+                          body = boto3.client("s3").get_object(Bucket=bucket, Key="config/allowed.json")["Body"].read()
+                          allowed = json.loads(body).get("allowed", [])
+                      except boto3.client("s3").exceptions.NoSuchKey:
+                          allowed = None   # 첫 배포처럼 목록이 아직 없으면 검사하지 않음
+                      if allowed is not None and rel not in allowed:
+                          raise Exception(f"release {rel} not in allowed {allowed} (s3://{bucket}/config/allowed.json)")
+                  print(f"precheck ok: release={rel} dependency={st}")
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {"Release": rel}, physicalResourceId="precheck")
+              except Exception as e:
+                  print(f"precheck FAILED: {e}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {}, physicalResourceId="precheck", reason=str(e)[:200])
+  PreCheck:
+    Type: Custom::ReleasePreCheck
+    Properties:
+      ServiceToken: !GetAtt CheckFn.Arn
+      PromoText: !Ref PromoText
+      Bucket: !Ref ArtifactBucket
+
+  # 관리용 보안 그룹 (기반 VPC 안에서 443)
+  AdminSg:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn: PreCheck
+    Properties:
+      GroupName: !If [DefaultSgName, !Sub "${StudentId}-iac-admin-sg", !Ref AdminSgName]
+      GroupDescription: admin access 443 from base VPC
+      VpcId: { "Fn::ImportValue": !Sub "${StudentId}-base-VpcId" }
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIp: 10.0.0.0/16 }
+
+  # ALB /promo — 릴리스 문구를 고정 응답으로
+  PromoRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    DependsOn: PreCheck
+    Properties:
+      ListenerArn: { "Fn::ImportValue": !Sub "${StudentId}-cmp-ListenerArn" }
+      Priority: !Ref RulePriority
+      Conditions: [{ Field: path-pattern, Values: [/promo] }]
+      Actions:
+        - Type: fixed-response
+          FixedResponseConfig: { StatusCode: "200", ContentType: text/plain, MessageBody: !Sub "promo ${PromoText}" }
+
+Outputs:
+  ArtifactBucket: { Value: !Ref ArtifactBucket }
+  AdminSgId: { Value: !Ref AdminSg }
+  PromoRuleArn: { Value: !Ref PromoRule }
+  Release: { Value: !Ref PromoText }
