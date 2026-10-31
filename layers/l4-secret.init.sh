@@ -3,18 +3,9 @@
 # common/start.sh 가 L4 층 배포 뒤 자동으로 부른다. 수강생은 sec 모듈 1단계에서 단계별로 직접 실행한다(tools/build/sec.sh).
 #   bash ~/opslab/layers/l4-secret.init.sh
 set -uo pipefail
-DATA_NO_LAB=1 source "$(dirname "$(readlink -f "$0")")/../modules/data/lib.sh"
-need WRITER_EP ADMIN_PW LOADGEN
-VAULT_ID=$(inst "$SID-sec-vault"); [ -n "$VAULT_ID" ] && [ "$VAULT_ID" != None ] || { echo "Vault 인스턴스($SID-sec-vault)가 없습니다"; exit 1; }
-VAULT_IP=$(aws ec2 describe-instances --instance-ids "$VAULT_ID" --query 'Reservations[0].Instances[0].PrivateIpAddress' --output text)
+DATA_NO_LAB=1 source "$(dirname "$(readlink -f "$0")")/../modules/sec/lib.sh"
+need WRITER_EP ADMIN_PW LOADGEN; vneed
 ACCT=$(aws sts get-caller-identity --query Account --output text)
-V=/opslab/sec/vault
-vrun() {  # $1=Vault 서버에서 실행할 bash 스크립트(root 토큰은 SSM 에서 서버가 직접 읽음) $2=대기 초
-  local b64; b64=$(printf '%s' "$1" | base64 -w0)
-  ssm_run "$VAULT_ID" "export VAULT_ADDR=http://127.0.0.1:8200 AWS_DEFAULT_REGION=$AWS_REGION
-export VAULT_TOKEN=\$(aws ssm get-parameter --name $V/root --with-decryption --query Parameter.Value --output text 2>/dev/null)
-echo $b64 | base64 -d | bash 2>&1" "${2:-90}"
-}
 
 echo "== 1) Vault 서버 설치 대기 ($VAULT_ID, $VAULT_IP)"
 ssm_run "$VAULT_ID" "for i in \$(seq 1 90); do systemctl is-active -q vault && break; sleep 5; done; systemctl is-active vault" 480
@@ -37,14 +28,9 @@ vrun "for n in 1 2; do vault operator unseal \$(aws ssm get-parameter --name $V/
 vault status | grep -E '^(Sealed|Initialized)'"
 
 echo "== 4) 인증·엔진·정책 설정"
+put_app_policy
 vrun "set -e
 vault auth list | grep -q '^aws/' || vault auth enable aws
-vault policy write app - <<'POL'
-path \"database/creds/app\"      { capabilities = [\"read\"] }
-path \"pki/issue/internal\"      { capabilities = [\"update\"] }
-path \"transit/encrypt/orders\"  { capabilities = [\"update\"] }
-path \"transit/decrypt/orders\"  { capabilities = [\"update\"] }
-POL
 vault write auth/aws/role/app auth_type=iam bound_iam_principal_arn=arn:aws:iam::$ACCT:role/$SID-base-ec2-role \
   resolve_aws_unique_ids=false token_policies=app token_ttl=1h token_max_ttl=24h >/dev/null
 vault secrets list | grep -q '^database/' || vault secrets enable database
@@ -67,7 +53,10 @@ if [ "$(sql 'SELECT count(*) FROM notes;' | tr -dc 0-9)" = 0 ]; then
   [ -n "$CT" ] && sql "INSERT INTO notes(ct) VALUES ('$CT');" >/dev/null && echo "  첫 메모 저장: ${CT:0:20}…"
 fi
 
-echo "== 6) 앱 서버 Vault Agent·내부 HTTPS(8443) 설치"
+echo "== 6) 클라이언트(loadgen)에 내부 CA 배포 — 8443 호출 시 이 CA 로 인증서를 검증한다"
+ssm_run "$LOADGEN" "mkdir -p /etc/opslab && curl -s -m 5 http://$VAULT_IP:8200/v1/pki/ca/pem -o /etc/opslab/ca.pem && grep -c BEGIN /etc/opslab/ca.pem" 30
+
+echo "== 7) 앱 서버 Vault Agent·내부 HTTPS(8443) 설치"
 aws ssm put-parameter --name "$V/addr" --type String --overwrite --value "http://$VAULT_IP:8200" >/dev/null
 aws ssm put-parameter --name /opslab/sec/secret_id --type String --overwrite --value "$SID/sec/app" >/dev/null
 IDS=$(app_ids)
