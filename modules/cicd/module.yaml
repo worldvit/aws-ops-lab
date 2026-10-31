@@ -1,0 +1,14 @@
+# 모듈 정의 — 과정·Day와 무관하게 이 모듈만의 정보를 둔다.
+id: cicd
+title: 배포 파이프라인 운영
+hours: 8
+requires: L2          # 아침에 배포할 환경 층 (common/start.sh cicd → L1, L2 + 주변 구성 env.yaml = <학번>-cicd-env)
+builds: —             # 층을 만들지 않음. 따라잡기(start.sh cicd full)는 full.sh 가 1단계 명령을 실행(GitHub 연결 승인은 사람이 해야 함)
+topics: CodePipeline · CodeBuild · CodeDeploy 배포 흐름 구성 · Auto Scaling 그룹과 ECS 무중단 배포 · 블루그린과 카나리 실행 및 지표 기반 중단 판단 · 배포 실패 시 이전 버전 복귀 · CloudFormation 스택의 파이프라인 연동과 변경셋 승인 자동화
+# Lab 목록: Lab ID | 장애 디렉터리(faults/) | 변형 수 | 구분 | 장애 유형(수강생에게 보이는 문구)
+labs:
+  - cicd-1 | build-fail     | 3 | 필수 | 새 릴리스가 빌드 단계에서 멈추고 배포까지 가지 못하는 장애
+  - cicd-2 | ec2-deploy     | 2 | 필수 | 서버(EC2) 배포가 실패하고 자동으로 되돌려진 장애
+  - cicd-3 | bad-release    | 2 | 필수 | 새 릴리스 배포 뒤 오류가 늘어난 장애(자동 중단이 됐을 수도, 안 됐을 수도 있음)
+  - cicd-4 | credentials    | 2 | 필수 | 파이프라인이 시작하자마자(또는 중간 단계에서) 권한 문제로 멈추는 장애
+  - cicd-5 | release-stack  | 2 | 심화 | 승인 전 변경셋 단계에서 파이프라인이 실패하는 장애

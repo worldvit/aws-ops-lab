@@ -1,0 +1,81 @@
+{
+  "pipeline": {
+    "name": "__SID__-cicd-pipeline",
+    "pipelineType": "V2",
+    "executionMode": "QUEUED",
+    "roleArn": "__PIPELINE_ROLE_ARN__",
+    "artifactStore": { "type": "S3", "location": "__BUCKET__" },
+    "variables": [
+      { "name": "AppVersion", "defaultValue": "v1", "description": "release number shown by /api" },
+      { "name": "ErrorRate", "defaultValue": "0", "description": "release setting: share of /api calls that fail (0~1)" }
+    ],
+    "stages": [
+      {
+        "name": "Source",
+        "actions": [{
+          "name": "GitHub",
+          "actionTypeId": { "category": "Source", "owner": "AWS", "provider": "CodeStarSourceConnection", "version": "1" },
+          "configuration": { "ConnectionArn": "__CONNECTION_ARN__", "FullRepositoryId": "__REPO__", "BranchName": "main",
+                             "OutputArtifactFormat": "CODE_ZIP", "DetectChanges": "false" },
+          "outputArtifacts": [{ "name": "SourceArtifact" }]
+        }]
+      },
+      {
+        "name": "Build",
+        "actions": [{
+          "name": "TestAndImage",
+          "actionTypeId": { "category": "Build", "owner": "AWS", "provider": "CodeBuild", "version": "1" },
+          "configuration": {
+            "ProjectName": "__SID__-cicd-build",
+            "EnvironmentVariables": "[{\"name\":\"APP_VERSION\",\"value\":\"#{variables.AppVersion}\",\"type\":\"PLAINTEXT\"},{\"name\":\"ERROR_RATE\",\"value\":\"#{variables.ErrorRate}\",\"type\":\"PLAINTEXT\"}]"
+          },
+          "inputArtifacts": [{ "name": "SourceArtifact" }],
+          "outputArtifacts": [{ "name": "Ec2Bundle" }, { "name": "EcsBundle" }]
+        }]
+      },
+      {
+        "name": "Release",
+        "actions": [
+          {
+            "name": "CreateChangeSet", "runOrder": 1,
+            "actionTypeId": { "category": "Deploy", "owner": "AWS", "provider": "CloudFormation", "version": "1" },
+            "configuration": { "ActionMode": "CHANGE_SET_REPLACE", "StackName": "__SID__-cicd-release", "ChangeSetName": "release",
+                               "TemplatePath": "SourceArtifact::cicd/release.yaml", "RoleArn": "__CFN_ROLE_ARN__",
+                               "ParameterOverrides": "{\"StudentId\":\"__SID__\",\"AppVersion\":\"#{variables.AppVersion}\"}" },
+            "inputArtifacts": [{ "name": "SourceArtifact" }]
+          },
+          {
+            "name": "Approve", "runOrder": 2,
+            "actionTypeId": { "category": "Approval", "owner": "AWS", "provider": "Manual", "version": "1" },
+            "configuration": { "CustomData": "변경셋 release 와 빌드 로그를 확인한 뒤 승인하세요 (릴리스 #{variables.AppVersion}, ErrorRate #{variables.ErrorRate})" }
+          },
+          {
+            "name": "ExecuteChangeSet", "runOrder": 3,
+            "actionTypeId": { "category": "Deploy", "owner": "AWS", "provider": "CloudFormation", "version": "1" },
+            "configuration": { "ActionMode": "CHANGE_SET_EXECUTE", "StackName": "__SID__-cicd-release", "ChangeSetName": "release" }
+          }
+        ]
+      },
+      {
+        "name": "Deploy",
+        "actions": [
+          {
+            "name": "EC2-Rolling", "runOrder": 1,
+            "actionTypeId": { "category": "Deploy", "owner": "AWS", "provider": "CodeDeploy", "version": "1" },
+            "configuration": { "ApplicationName": "__SID__-cicd-ec2", "DeploymentGroupName": "__SID__-cicd-ec2-dg" },
+            "inputArtifacts": [{ "name": "Ec2Bundle" }]
+          },
+          {
+            "name": "ECS-Canary", "runOrder": 1,
+            "actionTypeId": { "category": "Deploy", "owner": "AWS", "provider": "CodeDeployToECS", "version": "1" },
+            "configuration": { "ApplicationName": "__SID__-cicd-ecs", "DeploymentGroupName": "__SID__-cicd-ecs-dg",
+                               "TaskDefinitionTemplateArtifact": "EcsBundle", "TaskDefinitionTemplatePath": "taskdef.json",
+                               "AppSpecTemplateArtifact": "EcsBundle", "AppSpecTemplatePath": "appspec.yaml" },
+            "inputArtifacts": [{ "name": "EcsBundle" }]
+          }
+        ]
+      }
+    ]
+  },
+  "tags": [{ "key": "Course", "value": "opslab" }, { "key": "Module", "value": "cicd" }, { "key": "Owner", "value": "__SID__" }]
+}

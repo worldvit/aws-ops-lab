@@ -187,12 +187,16 @@ Resources:
 
 Outputs:
   AlbDns: { Value: !GetAtt Alb.DNSName }
-  AlbArn: { Value: !Ref Alb }
+  AlbArn:
+    Value: !Ref Alb
+    Export: { Name: !Sub "${StudentId}-cmp-AlbArn" }
   ListenerArn:
     Value: !Ref Listener
     Export: { Name: !Sub "${StudentId}-cmp-ListenerArn" }
   TgArn:  { Value: !Ref Tg }
-  AlbSg:  { Value: !Ref AlbSg }
+  AlbSg:
+    Value: !Ref AlbSg
+    Export: { Name: !Sub "${StudentId}-cmp-AlbSg" }
   AppSg:
     Value: !Ref AppSg
     Export: { Name: !Sub "${StudentId}-cmp-AppSg" }

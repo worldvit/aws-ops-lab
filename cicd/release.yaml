@@ -1,0 +1,18 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  [cicd 모듈 — 파이프라인이 변경셋으로 배포하는 릴리스 스택] 스택 이름: <학번>-cicd-release
+  지금 운영 중인 릴리스 번호를 SSM 파라미터로 기록한다(배포 후 판정·감사의 기준).
+Parameters:
+  StudentId: { Type: String, AllowedPattern: "s[0-9]{2}" }
+  AppVersion: { Type: String, AllowedPattern: "[a-z0-9.-]{1,20}" }
+Resources:
+  Release:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /opslab/cicd/release
+      Type: String
+      Value: !Ref AppVersion
+      Description: current release deployed by the pipeline
+      Tags: { Course: opslab, Module: cicd, Owner: !Ref StudentId }
+Outputs:
+  Release: { Value: !Ref AppVersion }

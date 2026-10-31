@@ -1,0 +1,24 @@
+{
+  "family": "__SID__-cicd-app",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "__EXEC_ROLE_ARN__",
+  "containerDefinitions": [
+    {
+      "name": "app",
+      "image": "__IMAGE__",
+      "essential": true,
+      "portMappings": [{ "containerPort": 8080, "protocol": "tcp" }],
+      "environment": [
+        { "name": "APP_VERSION", "value": "__APP_VERSION__" },
+        { "name": "APP_ERROR_RATE", "value": "__ERROR_RATE__" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": { "awslogs-group": "__LOG_GROUP__", "awslogs-region": "__REGION__", "awslogs-stream-prefix": "app" }
+      }
+    }
+  ]
+}

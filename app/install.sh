@@ -72,6 +72,11 @@ AccuracySec=1s
 WantedBy=timers.target
 DBENV
 
+# CodeDeploy 에이전트(cicd 모듈의 EC2 배포가 사용) — 다른 모듈에는 영향 없음. 실패해도 앱 설치는 계속
+( dnf install -y ruby wget >/dev/null 2>&1 &&
+  cd /tmp && wget -q "https://aws-codedeploy-ap-northeast-2.s3.ap-northeast-2.amazonaws.com/latest/install" -O cd-install &&
+  chmod +x cd-install && ./cd-install auto >/dev/null 2>&1 && systemctl enable --now codedeploy-agent ) || echo "codedeploy-agent 설치 실패" >&2
+
 systemctl daemon-reload
 systemctl enable --now app-db-env.timer
 systemctl enable --now app.service

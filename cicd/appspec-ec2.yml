@@ -1,0 +1,18 @@
+# cicd 모듈 — EC2(Auto Scaling 그룹) 배포 명세. CodeDeploy 에이전트가 서버마다 아래 순서로 실행한다.
+version: 0.0
+os: linux
+files:
+  - source: app.py
+    destination: /opt/app
+  - source: release.env
+    destination: /etc/app/release
+file_exists_behavior: OVERWRITE
+hooks:
+  ApplicationStop:
+    - { location: scripts/stop.sh, timeout: 60, runas: root }
+  AfterInstall:
+    - { location: scripts/configure.sh, timeout: 60, runas: root }
+  ApplicationStart:
+    - { location: scripts/start.sh, timeout: 60, runas: root }
+  ValidateService:
+    - { location: scripts/validate.sh, timeout: 120, runas: root }

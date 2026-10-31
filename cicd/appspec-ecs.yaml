@@ -1,0 +1,10 @@
+# cicd 모듈 — ECS 블루/그린 배포 명세. <TASK_DEFINITION> 은 파이프라인이 새로 등록한 작업 정의 ARN 으로 바꾼다.
+version: 0.0
+Resources:
+  - TargetService:
+      Type: AWS::ECS::Service
+      Properties:
+        TaskDefinition: <TASK_DEFINITION>
+        LoadBalancerInfo:
+          ContainerName: app
+          ContainerPort: 8080

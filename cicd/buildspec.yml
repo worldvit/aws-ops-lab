@@ -1,0 +1,44 @@
+# cicd 모듈 — CodeBuild 빌드 명세. 파이프라인(소스: 수강생 Fork)이 이 파일을 읽는다.
+# 프로젝트 환경변수: SID, ECR_URI, EXEC_ROLE_ARN, LOG_GROUP / 파이프라인 변수: APP_VERSION, ERROR_RATE
+version: 0.2
+env:
+  variables:
+    APP_VERSION: v1
+    ERROR_RATE: "0"
+phases:
+  install:
+    commands:
+      - pip3 install -q flask==3.0.3 pytest==8.3.3
+  pre_build:
+    commands:
+      - echo "== [차단 기준] 단위 시험 — 실패하면 여기서 멈추고 이미지·배포로 넘어가지 않는다"
+      - python3 -m pytest -q cicd/tests
+      - echo "== 이미지 저장소 로그인"
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin ${ECR_URI%%/*}
+  build:
+    commands:
+      - echo "== 이미지 빌드 ${ECR_URI}:${APP_VERSION}"
+      - docker build -f cicd/Dockerfile -t ${ECR_URI}:${APP_VERSION} .
+      - docker push ${ECR_URI}:${APP_VERSION}
+  post_build:
+    commands:
+      - echo "== 배포 묶음 만들기 (EC2 = CodeDeploy 번들, ECS = 작업 정의 + appspec)"
+      - mkdir -p out/ec2/scripts out/ecs
+      - cp app/app.py out/ec2/ && cp cicd/appspec-ec2.yml out/ec2/appspec.yml && cp cicd/scripts/*.sh out/ec2/scripts/
+      - printf 'APP_VERSION=%s\nAPP_ERROR_RATE=%s\n' "$APP_VERSION" "$ERROR_RATE" > out/ec2/release.env
+      - >-
+        sed -e "s|__SID__|$SID|g" -e "s|__IMAGE__|${ECR_URI}:${APP_VERSION}|g" -e "s|__EXEC_ROLE_ARN__|$EXEC_ROLE_ARN|g"
+        -e "s|__LOG_GROUP__|$LOG_GROUP|g" -e "s|__REGION__|$AWS_DEFAULT_REGION|g"
+        -e "s|__APP_VERSION__|$APP_VERSION|g" -e "s|__ERROR_RATE__|$ERROR_RATE|g" cicd/taskdef.tpl.json > out/ecs/taskdef.json
+      - cp cicd/appspec-ecs.yaml out/ecs/appspec.yaml
+      - cat out/ec2/release.env out/ecs/taskdef.json
+artifacts:
+  files: ['**/*']
+  base-directory: out/ec2
+  secondary-artifacts:
+    Ec2Bundle:
+      base-directory: out/ec2
+      files: ['**/*']
+    EcsBundle:
+      base-directory: out/ecs
+      files: ['**/*']
