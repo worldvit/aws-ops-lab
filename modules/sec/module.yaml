@@ -1,0 +1,15 @@
+# 모듈 정의 — 과정·Day와 무관하게 이 모듈만의 정보를 둔다.
+id: sec
+title: 시크릿과 인증 운영
+hours: 8
+requires: L3          # 아침에 배포할 환경 층 (common/start.sh sec → L1, L2, L3)
+builds: L4            # 이 모듈에서 직접 구축하는 층 (따라잡기: common/start.sh sec full → L4 = sec 완료 상태)
+topics: Vault Seal 상태 복구 절차 · 리스 만료에 따른 DB 자격증명 상실 · PKI 인증서 만료 · Transit 키 로테이션 후 복호화 실패 · KMS 키 정책 변경에 따른 접근 거부 · IAM 권한 오류 추적
+# Lab 목록: Lab ID | 장애 디렉터리(faults/) | 변형 수 | 구분 | 장애 유형(수강생에게 보이는 문구)
+labs:
+  - sec-1 | vault-seal     | 2 | 필수 | 비밀 저장소(Vault)가 응답하지만 비밀을 내주지 않는 장애
+  - sec-2 | lease-expiry   | 2 | 필수 | 앱의 DB 로그인이 갑자기 거부되는 장애 (몇 분에 걸쳐 드러남)
+  - sec-3 | pki-expiry     | 2 | 필수 | 내부 HTTPS(8443) 호출이 인증서 오류로 실패하는 장애 (몇 분에 걸쳐 드러남)
+  - sec-4 | transit-rotate | 2 | 필수 | 암호화 키 교체 작업 뒤 메모(/note) 기능이 실패하는 장애
+  - sec-5 | kms-policy     | 2 | 필수 | 앱이 비밀(/secret)을 읽지 못하는 장애 — 키 관리 측
+  - sec-6 | iam-error      | 3 | 심화 | 앱이 비밀(/secret)을 읽지 못하는 장애 — 권한 측

@@ -10,7 +10,7 @@ APP_PORT="${APP_PORT:-8080}"
 APP_VERSION="${APP_VERSION:-v1}"
 
 dnf install -y python3-pip
-pip3 install --quiet flask==3.0.3 gunicorn==22.0.0 psycopg2-binary==2.9.9
+pip3 install --quiet flask==3.0.3 gunicorn==22.0.0 psycopg2-binary==2.9.9 boto3==1.35.36
 
 mkdir -p /opt/app /etc/app
 curl -fsSL "$REPO_RAW/app/app.py" -o /opt/app/app.py
@@ -75,6 +75,14 @@ DBENV
 systemctl daemon-reload
 systemctl enable --now app-db-env.timer
 systemctl enable --now app.service
+
+# sec 모듈부터: Vault 가 준비되어 있으면(SSM /opslab/sec/vault/addr) Vault Agent·내부 HTTPS 설치 — 새로 뜬 인스턴스도 같은 상태가 된다
+R=$(curl -s -m 2 -H "X-aws-ec2-metadata-token: $(curl -s -m 2 -X PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 60')" http://169.254.169.254/latest/meta-data/placement/region)
+VA=$(aws ssm get-parameter --region "$R" --name /opslab/sec/vault/addr --query Parameter.Value --output text 2>/dev/null || true)
+SI=$(aws ssm get-parameter --region "$R" --name /opslab/sec/secret_id --query Parameter.Value --output text 2>/dev/null || true)
+if [ -n "$VA" ] && [ "$VA" != None ]; then
+  curl -fsSL "$REPO_RAW/app/sec-agent.sh" | VAULT_ADDR="$VA" SECRET_ID="$SI" bash || echo "sec-agent 설치 실패" >&2
+fi
 
 # 로컬 확인
 for i in $(seq 1 20); do
