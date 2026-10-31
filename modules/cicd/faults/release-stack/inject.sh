@@ -11,7 +11,9 @@ case $V_ in
      aws cloudformation delete-stack --stack-name "$RSTACK" && aws cloudformation wait stack-delete-complete --stack-name "$RSTACK" &&
      put_deny "$SID-cicd-cfn-role" '["ssm:PutParameter"]' && sleep 20 &&
      aws cloudformation create-stack --stack-name "$RSTACK" --template-body file://$D/../../cicd/release.yaml        --parameters ParameterKey=StudentId,ParameterValue=$SID ParameterKey=AppVersion,ParameterValue=$(load prev_release)        --role-arn "$(envout CfnRoleArn)" >/dev/null &&
-     aws cloudformation wait stack-rollback-complete --stack-name "$RSTACK"; del_deny "$SID-cicd-cfn-role"
+     { for i in $(seq 1 60); do   # 첫 생성 실패 → ROLLBACK_COMPLETE 까지 (stack-rollback-complete 대기 명령은 이 상태를 기다리지 못함)
+         case "$(aws cloudformation describe-stacks --stack-name "$RSTACK" --query 'Stacks[0].StackStatus' --output text)" in *_IN_PROGRESS) sleep 10;; *) break;; esac; done; }
+     del_deny "$SID-cicd-cfn-role"
      [ "$(aws cloudformation describe-stacks --stack-name "$RSTACK" --query 'Stacks[0].StackStatus' --output text)" = ROLLBACK_COMPLETE ] ;;
 esac || exit 1
 sleep 20
