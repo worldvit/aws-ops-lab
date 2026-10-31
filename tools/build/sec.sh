@@ -36,7 +36,12 @@ ARN=$(aws secretsmanager describe-secret --secret-id $SID/sec/app --query ARN --
 aws iam put-role-policy --role-name $SID-base-ec2-role --policy-name $SID-sec-app-access --policy-document \
   "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"ReadAppSecret\",\"Effect\":\"Allow\",\"Action\":\"secretsmanager:GetSecretValue\",\"Resource\":\"$ARN\"}]}"
 
-echo "== 1-5 Vault 서버(보안 그룹 + EC2)"
+echo "== 1-5 앱 서버 내부 HTTPS(8443) 허용"
+APP_SG=$(aws ec2 describe-security-groups --filters Name=group-name,Values=$SID-cmp-app-sg --query 'SecurityGroups[0].GroupId' --output text)
+aws ec2 authorize-security-group-ingress --group-id $APP_SG --ip-permissions \
+  'IpProtocol=tcp,FromPort=8443,ToPort=8443,IpRanges=[{CidrIp=10.0.0.0/16,Description="internal HTTPS (Vault PKI cert)"}]' >/dev/null
+
+echo "== 1-6 Vault 서버(보안 그룹 + EC2)"
 SG=$(aws ec2 create-security-group --group-name $SID-sec-vault-sg --description "Vault API 8200 from base VPC" --vpc-id $VPC_ID \
   --tag-specifications "ResourceType=security-group,Tags=[{Key=Name,Value=$SID-sec-vault-sg},{Key=Course,Value=opslab},{Key=Module,Value=sec},{Key=Owner,Value=$SID}]" \
   --query GroupId --output text)
@@ -49,10 +54,10 @@ aws ec2 run-instances --image-id $AMI --instance-type t3.small --subnet-id ${APP
   --query 'Instances[0].InstanceId' --output text
 sleep 30
 
-echo "== 1-6 ~ 1-10 Vault 초기화·잠금 해제·엔진 설정·앱 서버 Agent (Notion 에서는 단계별로 직접)"
+echo "== 1-7 ~ 1-11 Vault 초기화·잠금 해제·엔진 설정·앱 서버 Agent (Notion 에서는 단계별로 직접)"
 bash ~/opslab/layers/l4-secret.init.sh
 
-echo "== 1-11 동작 확인"
+echo "== 1-12 동작 확인"
 sleep 10
 for p in /db /note /secret; do curl -s http://$ALB_DNS$p; echo; done
 echo "✅ 1단계 명령 완료"

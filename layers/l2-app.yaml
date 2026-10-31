@@ -190,4 +190,6 @@ Outputs:
   AlbArn: { Value: !Ref Alb }
   TgArn:  { Value: !Ref Tg }
   AlbSg:  { Value: !Ref AlbSg }
-  AppSg:  { Value: !Ref AppSg }
+  AppSg:
+    Value: !Ref AppSg
+    Export: { Name: !Sub "${StudentId}-cmp-AppSg" }
