@@ -7,8 +7,8 @@ V_=$(pick_variant 2)
 case $V_ in
   1) vrun "vault write -f transit/keys/orders/rotate >/dev/null
 L=\$(vault read -field=latest_version transit/keys/orders)
-vault write transit/keys/orders/config min_decryption_version=\$L >/dev/null && echo ok" 30 | grep -q ok ;;
-  2) vrun "vault write -f transit/keys/orders/rotate >/dev/null && echo ok" 30 | grep -q ok &&
+vault write transit/keys/orders/config min_decryption_version=\$L >/dev/null && echo ok" 30 | has ok ;;
+  2) vrun "vault write -f transit/keys/orders/rotate >/dev/null && echo ok" 30 | has ok &&
      put_app_policy "$(grep -v 'transit/decrypt' <<<"$APP_VAULT_POLICY")" >/dev/null ;;
 esac || exit 1
 record $V_

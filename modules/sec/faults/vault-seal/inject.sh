@@ -9,5 +9,5 @@ if [ "$V_" = 2 ]; then   # 원래 키 조각은 주입 기록에 SecureString �
     --value "$(aws ssm get-parameter --name $V/unseal-1 --with-decryption --query Parameter.Value --output text)" >/dev/null || exit 1
   aws ssm put-parameter --name $V/unseal-1 --type SecureString --overwrite --value "$(openssl rand -base64 33)" >/dev/null || exit 1
 fi
-ssm_run "$VAULT_ID" "systemctl restart vault && sleep 3 && systemctl is-active vault" 60 | grep -q active || exit 1
+ssm_run "$VAULT_ID" "systemctl restart vault && sleep 3 && systemctl is-active vault" 60 | has active || exit 1
 record $V_

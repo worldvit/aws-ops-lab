@@ -32,3 +32,6 @@ put_app_policy() {  # Vault 앱 정책을 $1 내용으로 덮어쓴다(기본: �
   vrun "echo $b64 | base64 -d | vault policy write app -"
 }
 vneed() { [ -n "$VAULT_ID" ] && [ "$VAULT_ID" != None ] || { echo "Vault 서버($SID-sec-vault)를 찾지 못했습니다. 1단계 구축을 먼저 끝내세요."; exit 3; }; }
+has() {  # 파이프 입력에 $1 이 있는지 — 'cmd | grep -q' 는 pipefail 에서 앞 명령이 SIGPIPE 로 끝나 거짓 실패가 나므로 다 받은 뒤 검사
+  local o; o=$(cat); grep -qi -- "$1" <<<"$o"
+}
