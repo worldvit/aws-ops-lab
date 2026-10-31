@@ -3,7 +3,12 @@
 source "$(dirname "$(readlink -f "$0")")/../../lib.sh"
 need_pipe
 del_deny "$SID-cicd-cfn-role"; echo "  변경셋 실행 역할 거부 정책 삭제"
-if [ "$(aws cloudformation describe-stacks --stack-name "$RSTACK" --query 'Stacks[0].StackStatus' --output text 2>/dev/null)" = ROLLBACK_COMPLETE ]; then
+S=$(aws cloudformation describe-stacks --stack-name "$RSTACK" --query 'Stacks[0].StackStatus' --output text 2>/dev/null)
+if [ "$S" = UPDATE_ROLLBACK_FAILED ]; then   # 거부 정책 때문에 롤백(이전 값 복원)마저 실패한 상태 — 권한을 되돌린 뒤 롤백을 이어서 끝낸다
+  sleep 20; aws cloudformation continue-update-rollback --stack-name "$RSTACK" --role-arn "$(envout CfnRoleArn)" &&
+  aws cloudformation wait stack-rollback-complete --stack-name "$RSTACK" && echo "  릴리스 스택 롤백 교착 해소(continue-update-rollback)"
+fi
+if [ "$S" = ROLLBACK_COMPLETE ]; then
   aws cloudformation delete-stack --stack-name "$RSTACK" && aws cloudformation wait stack-delete-complete --stack-name "$RSTACK" && echo "  ROLLBACK_COMPLETE 릴리스 스택 삭제"
 fi
 sleep 30
