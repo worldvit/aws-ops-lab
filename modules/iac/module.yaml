@@ -1,0 +1,14 @@
+# 모듈 정의 — 과정·Day와 무관하게 이 모듈만의 정보를 둔다.
+id: iac
+title: IaC 운영과 드리프트
+hours: 8
+requires: L2          # 아침에 배포할 환경 층 (common/start.sh iac → L1, L2)
+builds: —             # 층을 만들지 않음. 수강생이 직접 배포하는 스택의 완료 상태는 done.yaml (따라잡기: start.sh iac full)
+topics: 콘솔 수동 변경으로 발생한 드리프트 탐지 · CloudFormation 스택 업데이트 실패와 롤백 교착 해소 · 변경셋 검토 항목 · SSM 문서를 통한 반복 작업 자동화와 실행 이력 관리 · 패치 적용 절차
+# Lab 목록: Lab ID | 장애 디렉터리(faults/) | 변형 수 | 구분 | 장애 유형(수강생에게 보이는 문구)
+labs:
+  - iac-1 | drift           | 3 | 필수 | 템플릿과 실제 리소스가 어긋난 장애(누군가 콘솔에서 고침)
+  - iac-2 | update-fail     | 2 | 필수 | 새 버전 배포(스택 업데이트)가 실패하고 이전 버전에 머무는 장애
+  - iac-3 | rollback-stuck  | 2 | 필수 | 스택 업데이트가 실패한 뒤 되돌리기(롤백)마저 멈춘 장애
+  - iac-4 | ssm-doc         | 2 | 필수 | 운영 자동화 문서(SSM)로 하던 반복 작업이 갑자기 실패하는 장애
+  - iac-5 | changeset       | 1 | 심화 | 배포 뒤 저장소의 배포 산출물이 사라진 장애
