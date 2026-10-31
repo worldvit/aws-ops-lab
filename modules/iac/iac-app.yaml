@@ -78,13 +78,21 @@ Resources:
       Role: !GetAtt CheckRole.Arn
       Code:
         ZipFile: |
-          import json, boto3, cfnresponse
+          import json, urllib.request, boto3
+          SUCCESS, FAILED = "SUCCESS", "FAILED"
+          def send(event, context, status, data, physicalResourceId=None, reason=None):
+              # CloudFormation 에 결과 회신(사전 서명 URL 로 PUT). python3.12 에는 cfnresponse 모듈이 없어 직접 보낸다
+              body = json.dumps({"Status": status, "Reason": reason or f"see CloudWatch Logs {context.log_stream_name}",
+                                 "PhysicalResourceId": physicalResourceId or context.log_stream_name, "StackId": event["StackId"],
+                                 "RequestId": event["RequestId"], "LogicalResourceId": event["LogicalResourceId"], "Data": data}).encode()
+              req = urllib.request.Request(event["ResponseURL"], data=body, method="PUT", headers={"Content-Type": "", "Content-Length": str(len(body))})
+              urllib.request.urlopen(req, timeout=10)
           def handler(event, context):
               p = event.get("ResourceProperties", {})
               rel, bucket = p.get("PromoText", ""), p.get("Bucket", "")
               try:
                   if event["RequestType"] == "Delete":
-                      return cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                      return send(event, context, SUCCESS, {})
                   # 1) 외부 시스템 상태: ready | maintenance | only:<버전,...>
                   try:
                       st = boto3.client("ssm").get_parameter(Name="/opslab/iac/dependency")["Parameter"]["Value"]
@@ -105,14 +113,15 @@ Resources:
                       if allowed is not None and rel not in allowed:
                           raise Exception(f"release {rel} not in allowed {allowed} (s3://{bucket}/config/allowed.json)")
                   print(f"precheck ok: release={rel} dependency={st}")
-                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {"Release": rel}, physicalResourceId="precheck")
+                  send(event, context, SUCCESS, {"Release": rel}, physicalResourceId="precheck")
               except Exception as e:
                   print(f"precheck FAILED: {e}")
-                  cfnresponse.send(event, context, cfnresponse.FAILED, {}, physicalResourceId="precheck", reason=str(e)[:200])
+                  send(event, context, FAILED, {}, physicalResourceId="precheck", reason=str(e)[:200])
   PreCheck:
     Type: Custom::ReleasePreCheck
     Properties:
       ServiceToken: !GetAtt CheckFn.Arn
+      ServiceTimeout: 120        # Lambda 가 응답하지 못해도 2분 뒤 실패로 처리(기본 1시간 대기 방지)
       PromoText: !Ref PromoText
       Bucket: !Ref ArtifactBucket
 
