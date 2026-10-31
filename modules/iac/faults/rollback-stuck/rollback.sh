@@ -8,5 +8,5 @@ printf '{"allowed": ["v1", "v2"]}' | aws s3 cp - "s3://$B/config/allowed.json" -
 if [ "$(stack_status)" = UPDATE_ROLLBACK_FAILED ]; then
   aws cloudformation continue-update-rollback --stack-name "$STACK" && echo "  롤백 계속: $(wait_stack 1200)"
 fi
-sg=$(aws ec2 describe-security-groups --filters Name=group-name,Values="$SID-iac-admin-sg-v2" --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null)
+sg=$(aws ec2 describe-security-groups --filters Name=group-name,Values="$SID-iac-admin-sg-new" --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null)
 [ -n "$sg" ] && [ "$sg" != None ] && [ "$sg" != "$(sres AdminSg)" ] && aws ec2 delete-security-group --group-id "$sg" && echo "  수동 SG 삭제"

@@ -12,8 +12,8 @@ case $V_ in
   1) aws ssm put-parameter --name /opslab/iac/dependency --type String --overwrite --value "only:v2" >/dev/null ;;
   2) printf '{"allowed": ["v2"]}' | aws s3 cp - "s3://$B/config/allowed.json" --quiet ;;
 esac || exit 1
-aws ec2 create-security-group --group-name "$SID-iac-admin-sg-v2" --description "created manually" \
+aws ec2 create-security-group --group-name "$SID-iac-admin-sg-new" --description "created manually" \
   --vpc-id "$(aws cloudformation list-exports --query "Exports[?Name=='$SID-base-VpcId'].Value" --output text)" >/dev/null 2>&1
-deploy_app PromoText=v2 AdminSgName="$SID-iac-admin-sg-v2"
+deploy_app PromoText=v2 AdminSgName="$SID-iac-admin-sg-new"
 [ "$(wait_stack 1200)" = UPDATE_ROLLBACK_FAILED ] || exit 1
 record $V_

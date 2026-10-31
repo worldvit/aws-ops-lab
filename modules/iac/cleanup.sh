@@ -2,7 +2,7 @@
 # iac 모듈 정리 훅 — common/cleanup.sh 가 스택을 지우기 전에 호출한다.
 # · 롤백 교착(UPDATE_ROLLBACK_FAILED) 스택은 지울 수 없으므로 의존 설정을 고치고 롤백을 마저 끝낸다(안 되면 사전 점검 건너뛰기)
 # · <학번>-iac-app 스택 삭제(버킷은 Retain 이라 남음) → 산출물 버킷(<학번>-iac-artifacts-*)을 모든 버전까지 비우고 삭제
-# · 수동 SG(<학번>-iac-admin-sg-v2), SSM 문서, SSM /opslab/iac/*, Lambda 로그 그룹
+# · 수동 SG(<학번>-iac-admin-sg-v2, -new), SSM 문서, SSM /opslab/iac/*, Lambda 로그 그룹
 set -uo pipefail
 : "${SID:?}"; export AWS_REGION="${AWS_REGION:-ap-northeast-2}"
 S="$SID-iac-app"
@@ -22,8 +22,10 @@ b = boto3.resource("s3").Bucket(sys.argv[1]); b.object_versions.delete(); b.dele
 PY
   echo "  버킷 삭제: $b"
 done
-sg=$(aws ec2 describe-security-groups --filters Name=group-name,Values="$SID-iac-admin-sg-v2" --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null)
-[ -n "$sg" ] && [ "$sg" != None ] && aws ec2 delete-security-group --group-id "$sg" 2>/dev/null && echo "  수동 SG 삭제"
+for n in v2 new; do   # 장애 스크립트가 만든 수동 SG(iac-2: -v2, iac-3: -new)
+  sg=$(aws ec2 describe-security-groups --filters Name=group-name,Values="$SID-iac-admin-sg-$n" --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null)
+  [ -n "$sg" ] && [ "$sg" != None ] && aws ec2 delete-security-group --group-id "$sg" 2>/dev/null && echo "  수동 SG 삭제: $SID-iac-admin-sg-$n"
+done
 aws ssm delete-document --name "$SID-iac-restart-app" 2>/dev/null && echo "  SSM 문서 삭제"
 N=$(aws ssm get-parameters-by-path --path /opslab/iac --query 'Parameters[].Name' --output text)
 [ -n "${N// /}" ] && aws ssm delete-parameters --names $N >/dev/null && echo "  SSM /opslab/iac/* 삭제"
