@@ -9,3 +9,4 @@ if [ -z "$P" ] || [ "$P" = None ]; then
     '.Statement |= map(select(.Effect != "Deny" and .Sid != "AppUse")) | .Statement += [{"Sid":"AppUse","Effect":"Allow","Principal":{"AWS":$r},"Action":["kms:Decrypt","kms:DescribeKey"],"Resource":"*"}]')
 fi
 aws kms put-key-policy --key-id "$K" --policy-name default --policy "$P" && echo "  키 정책 원복"
+wait_app /secret 300

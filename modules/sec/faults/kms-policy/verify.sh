@@ -4,7 +4,8 @@ source "$(dirname "$(readlink -f "$0")")/../../check.sh"
 start kms-policy
 echo "[1] 앱 기능"; chk_app /secret "비밀 읽기(/secret)"
 echo "[2] KMS 키 정책 ($KEY_ALIAS)"
-P=$(aws kms get-key-policy --key-id "$KEY_ALIAS" --policy-name default --query Policy --output text 2>/dev/null)
+K=$(aws kms describe-key --key-id "$KEY_ALIAS" --query KeyMetadata.KeyId --output text 2>/dev/null)   # get-key-policy 는 별칭을 받지 않는다
+P=$(aws kms get-key-policy --key-id "$K" --policy-name default --query Policy --output text 2>/dev/null)
 jq -e --arg r ":role/$APP_ROLE" '.Statement[] | select(.Effect=="Allow" and ((.Principal.AWS|tostring)|endswith($r)) and ((.Action|tostring)|contains("kms:Decrypt")))' <<<"$P" >/dev/null \
   && ok "앱 역할 복호화 허용 문장 있음" || ng "앱 역할($APP_ROLE) 복호화 허용 문장 없음"
 d=$(jq -r '[.Statement[] | select(.Effect=="Deny")] | length' <<<"$P" 2>/dev/null)

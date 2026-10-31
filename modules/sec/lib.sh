@@ -35,3 +35,10 @@ vneed() { [ -n "$VAULT_ID" ] && [ "$VAULT_ID" != None ] || { echo "Vault 서버(
 has() {  # 파이프 입력에 $1 이 있는지 — 'cmd | grep -q' 는 pipefail 에서 앞 명령이 SIGPIPE 로 끝나 거짓 실패가 나므로 다 받은 뒤 검사
   local o; o=$(cat); grep -qi -- "$1" <<<"$o"
 }
+wait_app() {  # $1=경로 [$2=최대 초, 기본 300] — ALB 를 거쳐 5번 연속 status ok 가 될 때까지(IAM·KMS 변경 전파 대기)
+  local t0=$SECONDS ok i dns; dns=$(alb_dns)
+  while [ $((SECONDS - t0)) -lt "${2:-300}" ]; do
+    ok=0; for i in 1 2 3 4 5; do curl -s -m 8 "http://$dns$1" | grep -q '"status":"ok"' && ok=$((ok+1)); done
+    [ "$ok" = 5 ] && { echo "  $1 5/5 (전파 $((SECONDS - t0))초)"; return 0; }; sleep 15
+  done; echo "  ⚠️ $1 이 ${2:-300}초 안에 회복되지 않음(전파 지연일 수 있음 — 잠시 뒤 verify)"; return 0
+}

@@ -8,4 +8,4 @@ if [ -z "$D_" ] || [ "$D_" = None ]; then
   D_="{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"ReadAppSecret\",\"Effect\":\"Allow\",\"Action\":\"secretsmanager:GetSecretValue\",\"Resource\":\"$A\"}]}"
 fi
 aws iam put-role-policy --role-name "$APP_ROLE" --policy-name "$APP_POLICY_NAME" --policy-document "$D_" && echo "  인라인 정책 $APP_POLICY_NAME 원복"
-sleep 15   # IAM 변경 전파
+wait_app /secret 300
