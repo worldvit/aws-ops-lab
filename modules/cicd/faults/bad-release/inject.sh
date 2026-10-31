@@ -6,8 +6,8 @@ need_pipe
 V_=$(pick_variant 2)
 save prev_release "$(good_release)"
 if [ "$V_" = 2 ]; then
-  aws deploy update-deployment-group --application-name "$EC2APP" --current-deployment-group-name "$EC2DG" --alarm-configuration enabled=false >/dev/null &&
-  aws deploy update-deployment-group --application-name "$ECSAPP" --current-deployment-group-name "$ECSDG" --alarm-configuration enabled=false >/dev/null || exit 1
+  aws deploy update-deployment-group --application-name "$EC2APP" --current-deployment-group-name "$EC2DG" --alarm-configuration "enabled=false,alarms=[{name=$SID-cmp-target-5xx}]" >/dev/null &&
+  aws deploy update-deployment-group --application-name "$ECSAPP" --current-deployment-group-name "$ECSDG" --alarm-configuration "enabled=false,alarms=[{name=$SID-cicd-ecs-5xx}]" >/dev/null || exit 1
 fi
 traffic 1500
 E=$(start_release "$(new_ver)" 0.3) || exit 1; save exec "$E"
