@@ -5,10 +5,11 @@ PASS=0; FAIL=0
 ok() { echo "  [PASS] $*"; PASS=$((PASS+1)); }
 ng() { echo "  [FAIL] $*"; FAIL=$((FAIL+1)); }
 start() { echo "== $(date '+%F %T') 정상 상태 판정: $SID / iac $1 =="; }
-chk_stack() {  # 스택이 안정 상태(_COMPLETE, 롤백·실패 아님)
+chk_stack() {  # 스택이 안정 상태. $1=strict 이면 롤백 완료(이전 버전 복귀)도 실패로 본다(배포 완료가 목표인 Lab)
   local s; s=$(stack_status)
   case "$s" in CREATE_COMPLETE|UPDATE_COMPLETE) ok "스택 $STACK $s";;
-    UPDATE_ROLLBACK_COMPLETE) ng "스택 $STACK $s — 마지막 업데이트가 실패해 이전 버전으로 돌아가 있음";;
+    UPDATE_ROLLBACK_COMPLETE) if [ "${1:-}" = strict ]; then ng "스택 $STACK $s — 마지막 업데이트가 실패해 이전 버전으로 돌아가 있음"
+      else ok "스택 $STACK $s (이전 버전으로 안정 — 다음 배포 가능)"; fi;;
     *) ng "스택 $STACK $s";; esac
 }
 chk_promo() {  # /promo 가 스택 매개변수 PromoText 와 같은 문구를 5번 모두 돌려줌
