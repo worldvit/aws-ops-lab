@@ -68,6 +68,10 @@ Resources:
               - Effect: Allow
                 Action: s3:GetObject
                 Resource: !Sub "arn:aws:s3:::${StudentId}-iac-artifacts-${AWS::AccountId}*/config/*"
+              # ListBucket 이 없으면 S3 는 "파일 없음(NoSuchKey)" 대신 "권한 없음(AccessDenied)"으로 답한다
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !Sub "arn:aws:s3:::${StudentId}-iac-artifacts-${AWS::AccountId}*"
   CheckFn:
     Type: AWS::Lambda::Function
     Properties:
