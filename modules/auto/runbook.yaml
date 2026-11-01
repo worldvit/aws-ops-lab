@@ -1,0 +1,55 @@
+schemaVersion: "0.3"
+description: |
+  opslab 런북 — 앱 /api 오류 자동 복구.
+  ① 안전 스위치(/opslab/auto/enabled)가 on 인지 확인 → ② 이름 태그로 앱 서버 찾기 →
+  ③ 한 대씩(MaxConcurrency 1, MaxErrors 0) 오류율 설정을 0으로 되돌리고 앱 재시작 + /health 확인.
+assumeRole: "{{ AutomationAssumeRole }}"
+parameters:
+  AutomationAssumeRole:
+    type: String
+    description: 이 런북을 실행할 역할
+    default: __ROLE__
+  TagValue:
+    type: String
+    description: 대상 서버의 Name 태그 값
+    default: __SID__-cmp-app
+mainSteps:
+  - name: checkSafetySwitch
+    action: aws:assertAwsResourceProperty
+    description: 안전 스위치가 on 일 때만 계속한다(점검 중이면 off 로 자동 조치를 멈춘다)
+    inputs:
+      Service: ssm
+      Api: GetParameter
+      Name: /opslab/auto/enabled
+      PropertySelector: $.Parameter.Value
+      DesiredValues: ["on"]
+  - name: findTargets
+    action: aws:executeAwsApi
+    description: 실행 중인 앱 서버 찾기
+    inputs:
+      Service: ec2
+      Api: DescribeInstances
+      Filters:
+        - Name: tag:Name
+          Values: ["{{ TagValue }}"]
+        - Name: instance-state-name
+          Values: [running]
+    outputs:
+      - Name: InstanceIds
+        Selector: $.Reservations..Instances..InstanceId
+        Type: StringList
+  - name: resetAndRestart
+    action: aws:runCommand
+    description: 한 대씩 설정 복구 + 재시작 + 헬스 확인(한 대라도 실패하면 멈춤)
+    timeoutSeconds: 300
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds: "{{ findTargets.InstanceIds }}"
+      MaxConcurrency: "1"
+      MaxErrors: "0"
+      Parameters:
+        commands:
+          - sed -i 's/^APP_ERROR_RATE=.*/APP_ERROR_RATE=0/' /etc/app/app.env
+          - systemctl restart app
+          - for i in $(seq 1 15); do curl -sf http://127.0.0.1:8080/health && exit 0; sleep 2; done
+          - echo health check failed; exit 1
