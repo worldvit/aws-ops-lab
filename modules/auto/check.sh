@@ -16,7 +16,8 @@ chk_session() {  # 세션 접속 + 접속 기록(로그 그룹에 남는지)
   local enc; enc=$(aws ssm get-document --name "$PREF" --query Content --output text 2>/dev/null | jq -r '.inputs.cloudWatchEncryptionEnabled')
   [ "$enc" = false ] && ok "로그 암호화 요구 꺼짐(로그 그룹이 KMS 암호화가 아님)" || ng "cloudWatchEncryptionEnabled=$enc — 암호화되지 않은 로그 그룹이면 세션이 거부됨"
   i=$(asg_ids | awk '{print $1}'); tok="opslab-probe-$(date +%s)"
-  out=$(session_probe "$i" "$tok")
+  for _ in 1 2 3 4 5; do   # 설정 문서를 고친 직후에는 1~3분 동안 이전 설정이 적용될 수 있어 30초 간격으로 다시 시도
+    out=$(session_probe "$i" "$tok"); grep -q "$tok" <<<"$out" && break; sleep 30; done
   if grep -q "$tok" <<<"$out"; then ok "세션 접속 $i: 명령 실행됨"
   else ng "세션 접속 $i 실패: $(grep -v '^$' <<<"$out" | grep -v "$tok" | tail -2 | tr '\n' ' ' | cut -c1-200)"; return; fi
   for _ in $(seq 1 12); do
