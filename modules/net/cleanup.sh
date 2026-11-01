@@ -33,6 +33,14 @@ if nf describe-firewall --firewall-name "$SID-net-fw" >/dev/null; then
     nf update-logging-configuration --firewall-name "$SID-net-fw" \
       --logging-configuration "{\"LogDestinationConfigs\":$(jq -c '.[:-1]' <<<"$LC")}" >/dev/null && echo "  방화벽 로그 설정 1개 해제"
   done
+  # 방화벽 엔드포인트를 가리키는 라우팅이 남아 있으면 방화벽을 지울 수 없다 → 그 라우팅부터 뺀다
+  for ep in $(nf describe-firewall --firewall-name "$SID-net-fw" --query 'FirewallStatus.SyncStates.*.Attachment | [].EndpointId' --output text); do
+    for rt in $(aws ec2 describe-route-tables --filters Name=vpc-id,Values="$VPC" --query 'RouteTables[].RouteTableId' --output text); do
+      for c in $(aws ec2 describe-route-tables --route-table-ids "$rt" --query "RouteTables[0].Routes[?VpcEndpointId=='$ep'].DestinationCidrBlock" --output text); do
+        aws ec2 delete-route --route-table-id "$rt" --destination-cidr-block "$c" && echo "  라우팅 삭제: $rt $c → $ep"
+      done
+    done
+  done
   if nf delete-firewall --firewall-name "$SID-net-fw" >/dev/null; then
     echo "  방화벽 삭제 요청 (5~10분)"
     for _ in $(seq 1 60); do nf describe-firewall --firewall-name "$SID-net-fw" >/dev/null || { echo "  방화벽 삭제 완료"; break; }; sleep 15; done
