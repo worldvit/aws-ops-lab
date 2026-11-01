@@ -135,8 +135,9 @@ put_auto_policy() {  # 자동화 역할의 인라인 정책 automation (env.yaml
 }
 put_events_policy() {  # EventBridge 역할의 인라인 정책 start-automation (env.yaml 과 같은 내용)
   aws iam put-role-policy --role-name "$SID-auto-events-role" --policy-name start-automation --policy-document "$(jq -nc \
-    --arg a "arn:aws:ssm:$AWS_REGION:$ACCT:automation-definition/$SID-auto-*" --arg r "$AUTO_ROLE_ARN" '{Version:"2012-10-17",Statement:[
-    {Effect:"Allow",Action:"ssm:StartAutomationExecution",Resource:$a},{Effect:"Allow",Action:"iam:PassRole",Resource:$r}]}')"
+    --arg a "arn:aws:ssm:$AWS_REGION:$ACCT:automation-definition/$SID-auto-*" --arg d "arn:aws:ssm:$AWS_REGION:$ACCT:document/$SID-auto-*" \
+    --arg r "$AUTO_ROLE_ARN" '{Version:"2012-10-17",Statement:[
+    {Effect:"Allow",Action:"ssm:StartAutomationExecution",Resource:[$a,$d]},{Effect:"Allow",Action:"iam:PassRole",Resource:$r}]}')"
 }
 put_alarm() {  # 1-5 의 알람
   aws cloudwatch put-metric-alarm --alarm-name "$ALARM" --alarm-description "opslab: 앱 5xx 증가 → 자동 복구 런북" \
