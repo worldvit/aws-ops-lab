@@ -18,7 +18,7 @@ SUB_A=$(app_subnets | awk '{print $1}'); SUB_C=$(app_subnets | awk '{print $2}')
 az_of() { aws ec2 describe-subnets --subnet-ids "$1" --query 'Subnets[0].AvailabilityZone' --output text 2>/dev/null; }
 asg_subnets() { aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG" --query 'AutoScalingGroups[0].VPCZoneIdentifier' --output text | tr ',' ' '; }
 asg_size() { aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG" --query 'AutoScalingGroups[0].[MinSize,DesiredCapacity,MaxSize]' --output text | tr '\t' '/'; }
-asg_ids() { aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG" --query "AutoScalingGroups[0].Instances[?LifecycleState=='InService'].InstanceId" --output text; }
+asg_ids() { aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG" --query "AutoScalingGroups[0].Instances[?LifecycleState=='InService'].InstanceId" --output text | tr '\t' ' '; }
 asg_azs() { aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG" --query "AutoScalingGroups[0].Instances[?LifecycleState=='InService'].AvailabilityZone" --output text | tr '\t' '\n' | sort | uniq -c | xargs; }
 writer_az() { aws rds describe-db-instances --db-instance-identifier "$(aws rds describe-db-clusters --db-cluster-identifier "$CLUSTER" --query 'DBClusters[0].DBClusterMembers[?IsClusterWriter].DBInstanceIdentifier|[0]' --output text)" --query 'DBInstances[0].AvailabilityZone' --output text 2>/dev/null; }
 member_azs() { aws rds describe-db-instances --filters Name=db-cluster-id,Values="$CLUSTER" --query 'DBInstances[].[DBInstanceIdentifier,AvailabilityZone]' --output text | tr '\t\n' ': '; }

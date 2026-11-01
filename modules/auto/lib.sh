@@ -31,7 +31,7 @@ alb_full() { aws elbv2 describe-load-balancers --names "$SID-cmp-alb" --query 'L
 listener_arn() { aws cloudformation list-exports --query "Exports[?Name=='$SID-cmp-ListenerArn'].Value" --output text; }
 tg_arn() { aws elbv2 describe-target-groups --names "$SID-cmp-tg" --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null; }
 # ASG 의 InService 인스턴스(태그와 무관 — 태그가 지워져도 찾는다)
-asg_ids() { aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG" --query "AutoScalingGroups[0].Instances[?LifecycleState=='InService'].InstanceId" --output text 2>/dev/null; }
+asg_ids() { aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG" --query "AutoScalingGroups[0].Instances[?LifecycleState=='InService'].InstanceId" --output text 2>/dev/null | tr '\t' ' '; }
 # 이름 태그로 찾은 실행 중 앱 서버
 app_ids() { aws ec2 describe-instances --filters Name=tag:Name,Values="$APP_TAG" Name=instance-state-name,Values=running --query 'Reservations[].Instances[].InstanceId' --output text; }
 ping_of() { aws ssm describe-instance-information --filters Key=InstanceIds,Values="$1" --query 'InstanceInformationList[0].PingStatus' --output text 2>/dev/null; }
