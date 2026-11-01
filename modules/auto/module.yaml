@@ -1,0 +1,15 @@
+# 모듈 정의 — 과정·Day와 무관하게 이 모듈만의 정보를 둔다.
+id: auto
+title: 운영 자동화와 자동 복구
+hours: 8
+requires: L2          # 아침에 배포할 환경 층 (common/start.sh auto → L1, L2 + 주변 구성 env.yaml = <학번>-auto-env)
+builds: —             # 층을 만들지 않음. 따라잡기(start.sh auto full)는 full.sh 가 1단계 명령을 실행
+topics: Session Manager 기반 접속과 접속 기록 관리 · Run Command를 통한 동시 조치 · SSM Automation으로 런북을 실행 가능한 문서로 전환 · CloudWatch 알람에서 EventBridge를 거친 자동 복구 연결 · 자동 조치 실패 시 안전장치 · Patch Manager와 유지관리 기간 · Route 53 헬스체크 기반 자동 전환
+# Lab 목록: Lab ID | 장애 디렉터리(faults/) | 변형 수 | 구분 | 장애 유형(수강생에게 보이는 문구)
+labs:
+  - auto-1 | session     | 3 | 필수 | 서버 접속(Session Manager)이 안 되거나 접속 기록이 남지 않는 장애
+  - auto-2 | runcmd      | 2 | 심화 | 여러 서버에 한꺼번에 내린 조치(Run Command)가 일부 서버에만 적용되는 장애
+  - auto-3 | automation  | 3 | 필수 | 런북 자동화 문서(SSM Automation)를 실행하면 실패하는 장애
+  - auto-4 | autoheal    | 3 | 필수 | 오류가 늘어 알람이 울려야 하는데 자동 복구가 동작하지 않는 장애
+  - auto-5 | patch       | 2 | 심화 | 유지관리 기간의 패치 작업이 서버에서 실행되지 않는 장애
+  - auto-6 | failover    | 2 | 필수 | DNS 자동 전환(Route 53 장애 조치)이 상황과 다르게 동작하는 장애
