@@ -43,6 +43,9 @@ delete_all() {
                --query "reverse(sort_by(StackSummaries[?starts_with(StackName,'$SID-') && StackName!='$SID-l0'],&CreationTime))[].StackName" --output text); do
     echo "  스택 삭제: $st"; aws cloudformation delete-stack --stack-name "$st"; aws cloudformation wait stack-delete-complete --stack-name "$st" || echo "  ⚠️ $st 삭제 실패 — 콘솔에서 이벤트 확인"
   done
+  # 4) 스택 삭제가 남긴 Aurora 최종 스냅샷(이전 템플릿의 기본 삭제 정책) — 저장 비용이 나가므로 삭제
+  for s in $(aws rds describe-db-cluster-snapshots --snapshot-type manual --query "DBClusterSnapshots[?starts_with(DBClusterSnapshotIdentifier,'$SID-l3-snapshot-')].DBClusterSnapshotIdentifier" --output text); do
+    aws rds delete-db-cluster-snapshot --db-cluster-snapshot-identifier "$s" >/dev/null && echo "  최종 스냅샷 삭제: $s"; done
 }
 
 case "$MODE" in

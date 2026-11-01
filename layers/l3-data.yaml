@@ -53,6 +53,8 @@ Resources:
 
   Cluster:
     Type: AWS::RDS::DBCluster
+    DeletionPolicy: Delete          # 기본값(Snapshot)이면 매일 정리 때 최종 스냅샷이 남아 저장 비용 발생
+    UpdateReplacePolicy: Delete
     Properties:
       DBClusterIdentifier: !Sub "${StudentId}-data-db"
       Engine: aurora-postgresql
