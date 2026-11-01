@@ -25,8 +25,10 @@ chk_session() {  # 세션 접속 + 접속 기록(로그 그룹에 남는지)
   done
   [ "${n:-0}" -ge 1 ] && ok "접속 기록이 $LOGG 에 남음" || ng "세션은 됐지만 접속 기록이 $LOGG 에 60초 안에 남지 않음"
 }
-chk_runcmd() {  # 태그 대상 Run Command 가 ASG 의 모든 서버에서 성공
-  local want c t s; want=$(wc -w <<<"$(asg_ids)")
+chk_runcmd() {  # ASG 의 모든 서버에 이름 태그 + 태그 대상 Run Command 가 모든 서버에서 성공
+  local want c t s x miss=""; want=$(wc -w <<<"$(asg_ids)")
+  for x in $(asg_ids); do [ "$(aws ec2 describe-tags --filters Name=resource-id,Values="$x" Name=key,Values=Name --query 'Tags[0].Value' --output text)" = "$APP_TAG" ] || miss="$miss $x"; done
+  [ -z "$miss" ] && ok "ASG 서버 ${want}대 모두 Name=$APP_TAG 태그" || ng "Name 태그가 없거나 다른 서버:$miss (태그 대상 명령에서 빠짐)"
   read -r c t s <<<"$(run_tag 'hostname')"
   [ "$t" = "$want" ] && [ "$s" = "$want" ] && ok "Run Command(태그 Name=$APP_TAG) 대상 $t대 / 성공 $s대 (ASG $want대)" \
     || ng "Run Command 대상 ${t:-0}대 / 성공 ${s:-0}대 — ASG 는 ${want}대 (명령 $c)"
