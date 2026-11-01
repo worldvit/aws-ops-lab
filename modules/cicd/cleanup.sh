@@ -4,9 +4,9 @@
 #   CodeBuild 로그 그룹, 작업 정의 등록 해제, SSM /opslab/cicd/*
 set -uo pipefail
 : "${SID:?}"; export AWS_REGION="${AWS_REGION:-ap-northeast-2}"
-aws codepipeline delete-pipeline --name "$SID-cicd-pipeline" 2>/dev/null && echo "  파이프라인 삭제"
-aws codebuild delete-project --name "$SID-cicd-build" >/dev/null 2>&1 && echo "  CodeBuild 프로젝트 삭제"
-for a in "$SID-cicd-ec2" "$SID-cicd-ecs"; do aws deploy delete-application --application-name "$a" 2>/dev/null && echo "  CodeDeploy 앱 삭제: $a"; done
+aws codepipeline get-pipeline --name "$SID-cicd-pipeline" >/dev/null 2>&1 && aws codepipeline delete-pipeline --name "$SID-cicd-pipeline" && echo "  파이프라인 삭제"
+[ "$(aws codebuild batch-get-projects --names "$SID-cicd-build" --query 'length(projects)' --output text 2>/dev/null)" = 1 ] && aws codebuild delete-project --name "$SID-cicd-build" >/dev/null && echo "  CodeBuild 프로젝트 삭제"
+for a in "$SID-cicd-ec2" "$SID-cicd-ecs"; do aws deploy get-application --application-name "$a" >/dev/null 2>&1 && aws deploy delete-application --application-name "$a" && echo "  CodeDeploy 앱 삭제: $a"; done
 if aws cloudformation describe-stacks --stack-name "$SID-cicd-release" >/dev/null 2>&1; then
   aws cloudformation delete-stack --stack-name "$SID-cicd-release"; aws cloudformation wait stack-delete-complete --stack-name "$SID-cicd-release"; echo "  릴리스 스택 삭제"
 fi
