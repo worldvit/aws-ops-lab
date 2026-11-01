@@ -72,11 +72,11 @@ CICD_NO_LAB=1 source ~/opslab/modules/cicd/lib.sh
 sleep 10
 EID=$(aws codepipeline list-pipeline-executions --pipeline-name $PIPE --max-items 1 --query 'pipelineExecutionSummaries[0].pipelineExecutionId' --output text | head -1)
 echo "   실행 ID $EID"
-R=$(AUTO_APPROVE=1 wait_exec "$EID" 1800); echo "   결과: $R"
+R=$(AUTO_APPROVE=1 wait_exec "$EID" 2700); echo "   결과: $R"
 [ "$R" = Succeeded ] || { failed_actions "$EID"; exit 1; }
 
 echo "== 1-8 두 번째 릴리스 v2 — EC2 는 한 대씩, ECS 는 20% 카나리 3분 뒤 전체"
 EID=$(start_release v2 0); echo "   실행 ID $EID"
-R=$(AUTO_APPROVE=1 wait_exec "$EID" 1800); echo "   결과: $R"
+R=$(AUTO_APPROVE=1 wait_exec "$EID" 2700); echo "   결과: $R"
 [ "$R" = Succeeded ] || { failed_actions "$EID"; exit 1; }
 echo "   EC2 :80 → $(ver 80)   ECS :8000 → $(ver 8000)   기록된 릴리스 → $(release)"

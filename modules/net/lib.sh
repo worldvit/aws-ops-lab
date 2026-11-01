@@ -81,10 +81,11 @@ fw_rules_json() {  # $1=허용 포트 $2=허용 출발지 — 상태 저장 규�
     {Action:"DROP",Header:{Protocol:"IP",Source:"ANY",SourcePort:"ANY",Direction:"ANY",Destination:"ANY",DestinationPort:"ANY"},
      RuleOptions:[{Keyword:"sid",Settings:["2"]}]}]}}'
 }
-fw_set_rules() {  # $1=포트 $2=출발지
-  local tok; tok=$(aws network-firewall describe-rule-group --rule-group-arn "$FW_RULES_ARN" --query UpdateToken --output text)
+fw_set_rules() {  # $1=포트 $2=출발지 — 규칙만 바꾸고 규칙 평가 순서(StatefulRuleOptions)는 지금 값을 그대로 둔다(콘솔 기본 '엄격한 순서'로 만든 경우 대비)
+  local out tok opt; out=$(aws network-firewall describe-rule-group --rule-group-arn "$FW_RULES_ARN" --output json) || return 1
+  tok=$(jq -r .UpdateToken <<<"$out"); opt=$(jq -c '.RuleGroup.StatefulRuleOptions // empty' <<<"$out")
   aws network-firewall update-rule-group --rule-group-arn "$FW_RULES_ARN" --update-token "$tok" \
-    --rule-group "$(fw_rules_json "$1" "$2")" >/dev/null
+    --rule-group "$(fw_rules_json "$1" "$2" | jq -c --argjson o "${opt:-null}" 'if $o then .StatefulRuleOptions=$o else . end')" >/dev/null
 }
 fw_policy_edit() {  # $1=jq 식 — 방화벽 정책 본문을 고친다
   local out tok body

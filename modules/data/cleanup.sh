@@ -5,6 +5,9 @@ set -uo pipefail
 : "${SID:?}"; export AWS_REGION="${AWS_REGION:-ap-northeast-2}"
 del_cluster() {  # $1=클러스터 ID — 인스턴스부터 지우고 클러스터 삭제, 끝날 때까지 기다린다
   local c=$1 i
+  # 콘솔 템플릿 "프로덕션"을 고르면 삭제 방지가 켜진다 → 먼저 끈다(꺼져 있으면 그대로 통과)
+  [ "$(aws rds describe-db-clusters --db-cluster-identifier "$c" --query 'DBClusters[0].DeletionProtection' --output text 2>/dev/null)" = True ] \
+    && aws rds modify-db-cluster --db-cluster-identifier "$c" --no-deletion-protection --apply-immediately >/dev/null && echo "  삭제 방지 해제: $c"
   for i in $(aws rds describe-db-instances --filters Name=db-cluster-id,Values="$c" --query 'DBInstances[].DBInstanceIdentifier' --output text); do
     aws rds delete-db-instance --db-instance-identifier "$i" --skip-final-snapshot >/dev/null 2>&1 && echo "  DB 인스턴스 삭제 요청: $i"
   done

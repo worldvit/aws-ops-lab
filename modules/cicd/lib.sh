@@ -37,8 +37,8 @@ approve_if_waiting() {  # 승인 단계가 기다리고 있으면 승인($1 실�
   aws codepipeline put-approval-result --pipeline-name "$PIPE" --stage-name Release --action-name Approve --token "$tok" \
     --result summary="opslab auto approve",status=Approved >/dev/null && echo "  (승인 완료)" >&2
 }
-wait_exec() {  # $1=실행 ID $2=최대 초(기본 1500). AUTO_APPROVE=1 이면 승인 단계를 자동 승인. 결과 상태를 출력
-  local i s; for i in $(seq 1 $(( ${2:-1500} / 10 ))); do
+wait_exec() {  # $1=실행 ID $2=최대 초(기본 2700). AUTO_APPROVE=1 이면 승인 단계를 자동 승인. 결과 상태를 출력
+  local i s; for i in $(seq 1 $(( ${2:-2700} / 10 ))); do
     s=$(exec_status "$1"); case "$s" in InProgress|Stopping|"") ;; *) echo "$s"; return 0;; esac
     [ -n "${AUTO_APPROVE:-}" ] && approve_if_waiting "$1"
     sleep 10; done; exec_status "$1"
@@ -54,7 +54,7 @@ retry_failed() {  # $1=실행 ID — 실패한 단계를 다시 실행(같은 �
 # 정상 릴리스로 되돌리기: 이전에 성공한 릴리스 번호(없으면 v1)로 새 실행 → 성공까지(자동 승인)
 good_release() { local r; r=$(release); [ "$r" = none ] && r=v1; echo "$r"; }
 redeploy_good() {  # $1=버전(기본: 현재 기록된 릴리스) → 결과 상태
-  local v e; v=${1:-$(good_release)}; e=$(start_release "$v" 0) || return 1; AUTO_APPROVE=1 wait_exec "$e" 1800
+  local v e; v=${1:-$(good_release)}; e=$(start_release "$v" 0) || return 1; AUTO_APPROVE=1 wait_exec "$e" 2700
 }
 # ── 장애 스크립트 도우미
 DENY=opslab-fault-deny                      # 장애가 역할에 붙이는 인라인 거부 정책 이름
@@ -74,7 +74,7 @@ retry_exec() {  # $1=실행 ID — 실패한 단계를 처음부터 다시(모�
       --query 'actionExecutionDetails[?status==`Failed`].stageName | [0]' --output text)
     [ -n "$st" ] && [ "$st" != None ] || { exec_status "$1"; return 0; }
     aws codepipeline retry-stage-execution --pipeline-name "$PIPE" --stage-name "$st" --pipeline-execution-id "$1" --retry-mode ALL_ACTIONS >/dev/null 2>&1 || true
-    sleep 15; r=$(AUTO_APPROVE=1 wait_exec "$1" 1800); [ "$r" = Succeeded ] && { echo "$r"; return 0; }
+    sleep 15; r=$(AUTO_APPROVE=1 wait_exec "$1" 2700); [ "$r" = Succeeded ] && { echo "$r"; return 0; }
     sleep 30   # IAM 전파 등
   done; echo "$r"
 }

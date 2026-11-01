@@ -10,5 +10,5 @@ case $V_ in
 esac || exit 1
 sleep 20
 E=$(start_release "$(new_ver)" 0) || exit 1; save exec "$E"
-[ "$(AUTO_APPROVE=1 wait_exec "$E" 1800)" = Failed ] || exit 1
+[ "$(AUTO_APPROVE=1 wait_exec "$E" 2700)" = Failed ] || exit 1
 record $V_

@@ -9,8 +9,8 @@ if [ "$V_" = 2 ]; then
   aws deploy update-deployment-group --application-name "$EC2APP" --current-deployment-group-name "$EC2DG" --alarm-configuration "enabled=false,alarms=[{name=$SID-cmp-target-5xx}]" >/dev/null &&
   aws deploy update-deployment-group --application-name "$ECSAPP" --current-deployment-group-name "$ECSDG" --alarm-configuration "enabled=false,alarms=[{name=$SID-cicd-ecs-5xx}]" >/dev/null || exit 1
 fi
-traffic 1500
+traffic 1800   # 콘솔로 만든 배포 그룹은 원래 개정 종료 대기가 5분(CLI 1분)이라 실행이 4분쯤 길다
 E=$(start_release "$(new_ver)" 0.3) || exit 1; save exec "$E"
-r=$(AUTO_APPROVE=1 wait_exec "$E" 1800)
+r=$(AUTO_APPROVE=1 wait_exec "$E" 2700)
 case $V_ in 1) [ "$r" = Failed ] || exit 1 ;; 2) [ "$r" = Succeeded ] || exit 1 ;; esac
 record $V_

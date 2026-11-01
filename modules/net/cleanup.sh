@@ -41,6 +41,10 @@ if nf describe-firewall --firewall-name "$SID-net-fw" >/dev/null; then
       done
     done
   done
+  # 콘솔로 만들면 "삭제 방지"·"서브넷 변경 보호"가 기본으로 켜져 있다 → 끄고 지운다(CLI 로 만든 경우 이미 꺼져 있어 그대로 통과)
+  nf update-firewall-delete-protection --firewall-name "$SID-net-fw" --no-delete-protection >/dev/null
+  nf update-subnet-change-protection --firewall-name "$SID-net-fw" --no-subnet-change-protection >/dev/null
+  nf update-firewall-policy-change-protection --firewall-name "$SID-net-fw" --no-firewall-policy-change-protection >/dev/null
   if nf delete-firewall --firewall-name "$SID-net-fw" >/dev/null; then
     echo "  방화벽 삭제 요청 (5~10분)"
     for _ in $(seq 1 60); do nf describe-firewall --firewall-name "$SID-net-fw" >/dev/null || { echo "  방화벽 삭제 완료"; break; }; sleep 15; done
@@ -58,16 +62,22 @@ for t in "STATEFUL $SID-net-fw-rules" "STATELESS $SID-net-fw-maint"; do
 done
 
 # 3) TGW 연결 → TGW
-for a in $(aws ec2 describe-transit-gateway-vpc-attachments --filters Name=tag:Owner,Values="$SID" Name=state,Values=available,pending,modifying,failed \
-            --query "TransitGatewayVpcAttachments[?!(Tags[?Key=='$CFN'])].TransitGatewayAttachmentId" --output text); do
+#   Owner 태그로 찾고, 콘솔에서 태그를 빠뜨린 경우를 위해 이름(Name=<학번>-net-tgw*)과 그 TGW 에 붙은 연결로도 찾는다
+TGWS=$( { aws ec2 describe-transit-gateways --filters Name=tag:Owner,Values="$SID" Name=state,Values=available,pending \
+            --query "TransitGateways[?!(Tags[?Key=='$CFN'])].TransitGatewayId" --output text
+          aws ec2 describe-transit-gateways --filters Name=tag:Name,Values="$SID-net-tgw*" Name=state,Values=available,pending \
+            --query "TransitGateways[?!(Tags[?Key=='$CFN'])].TransitGatewayId" --output text; } 2>/dev/null | tr '\t' '\n' | grep . | sort -u)
+tgw_atts() {  # $1=상태 목록 → 연결 ID
+  { aws ec2 describe-transit-gateway-vpc-attachments --filters Name=tag:Owner,Values="$SID" Name=state,Values="$1" \
+      --query "TransitGatewayVpcAttachments[?!(Tags[?Key=='$CFN'])].TransitGatewayAttachmentId" --output text
+    for t in $TGWS; do aws ec2 describe-transit-gateway-vpc-attachments --filters Name=transit-gateway-id,Values="$t" Name=state,Values="$1" \
+      --query "TransitGatewayVpcAttachments[?!(Tags[?Key=='$CFN'])].TransitGatewayAttachmentId" --output text; done; } 2>/dev/null | tr '\t' '\n' | grep . | sort -u
+}
+for a in $(tgw_atts available,pending,modifying,failed); do
   aws ec2 delete-transit-gateway-vpc-attachment --transit-gateway-attachment-id "$a" >/dev/null && echo "  TGW 연결 삭제 요청: $a"
 done
-for _ in $(seq 1 40); do
-  n=$(aws ec2 describe-transit-gateway-vpc-attachments --filters Name=tag:Owner,Values="$SID" Name=state,Values=deleting \
-      --query 'length(TransitGatewayVpcAttachments)' --output text); [ "$n" = 0 ] && break; sleep 15
-done
-for t in $(aws ec2 describe-transit-gateways --filters Name=tag:Owner,Values="$SID" Name=state,Values=available,pending \
-            --query "TransitGateways[?!(Tags[?Key=='$CFN'])].TransitGatewayId" --output text); do
+for _ in $(seq 1 40); do [ -z "$(tgw_atts deleting)" ] && break; sleep 15; done
+for t in $TGWS; do
   aws ec2 delete-transit-gateway --transit-gateway-id "$t" >/dev/null && echo "  TGW 삭제 요청: $t"
 done
 
