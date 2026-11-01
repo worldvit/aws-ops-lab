@@ -79,6 +79,7 @@ aws events put-targets --rule $SID-auto-recover --targets "[{\"Id\":\"runbook\",
 echo "   연결 시험: 알람 상태를 잠시 ALARM 으로 바꿔 런북이 시작되는지 본다(새 규칙이 적용될 때까지 30초 기다린 뒤)"
 sleep 30
 T0=$(date +%s)
+aws cloudwatch set-alarm-state --alarm-name $SID-auto-api-5xx --state-value OK --state-reason "opslab 1-5 연결 시험 준비"; sleep 3
 aws cloudwatch set-alarm-state --alarm-name $SID-auto-api-5xx --state-value ALARM --state-reason "opslab 1-5 연결 시험"
 E=$(runbook_since $T0 120)
 echo "   알람이 시작한 실행: $E → $(wait_runbook $E)"
