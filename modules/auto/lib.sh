@@ -87,7 +87,8 @@ run_runbook() {  # $1=추가 매개변수 JSON(선택)
   aws ssm start-automation-execution --document-name "$RUNBOOK" --parameters "$p" --query AutomationExecutionId --output text 2>&1
 }
 wait_runbook() {  # $1=실행 ID
-  local i s; for i in $(seq 1 $(( ${2:-300} / 5 ))); do
+  local i s; [[ "${1:-}" =~ ^[0-9a-f-]{36}$ ]] || { echo None; return; }
+  for i in $(seq 1 $(( ${2:-300} / 5 ))); do
     s=$(aws ssm get-automation-execution --automation-execution-id "$1" --query AutomationExecution.AutomationExecutionStatus --output text 2>/dev/null)
     case "$s" in Success|Failed|TimedOut|Cancelled|CompletedWithFailure) echo "$s"; return;; esac; sleep 5
   done; echo "${s:-Unknown}"

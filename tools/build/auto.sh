@@ -76,7 +76,8 @@ aws events put-rule --name $SID-auto-recover --event-pattern file://$HOME/auto-r
   --description "opslab: 5xx 알람 → 앱 복구 런북" --tags $TAGS --query RuleArn --output text
 aws events put-targets --rule $SID-auto-recover --targets "[{\"Id\":\"runbook\",\"Arn\":\"arn:aws:ssm:$AWS_REGION:$ACCT:automation-definition/$SID-auto-app-recover:\$DEFAULT\",\"RoleArn\":\"$EVENTS_ROLE_ARN\",\"Input\":\"{\\\"AutomationAssumeRole\\\":[\\\"$AUTOMATION_ROLE_ARN\\\"]}\"}]" \
   --query FailedEntryCount --output text
-echo "   연결 시험: 알람 상태를 잠시 ALARM 으로 바꿔 런북이 시작되는지 본다"
+echo "   연결 시험: 알람 상태를 잠시 ALARM 으로 바꿔 런북이 시작되는지 본다(새 규칙이 적용될 때까지 30초 기다린 뒤)"
+sleep 30
 T0=$(date +%s)
 aws cloudwatch set-alarm-state --alarm-name $SID-auto-api-5xx --state-value ALARM --state-reason "opslab 1-5 연결 시험"
 E=$(runbook_since $T0 120)
