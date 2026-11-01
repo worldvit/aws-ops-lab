@@ -36,7 +36,7 @@ if nf describe-firewall --firewall-name "$SID-net-fw" >/dev/null; then
   # 방화벽 엔드포인트를 가리키는 라우팅이 남아 있으면 방화벽을 지울 수 없다 → 그 라우팅부터 뺀다
   for ep in $(nf describe-firewall --firewall-name "$SID-net-fw" --query 'FirewallStatus.SyncStates.*.Attachment | [].EndpointId' --output text); do
     for rt in $(aws ec2 describe-route-tables --filters Name=vpc-id,Values="$VPC" --query 'RouteTables[].RouteTableId' --output text); do
-      for c in $(aws ec2 describe-route-tables --route-table-ids "$rt" --query "RouteTables[0].Routes[?VpcEndpointId=='$ep'].DestinationCidrBlock" --output text); do
+      for c in $(aws ec2 describe-route-tables --route-table-ids "$rt" --query "RouteTables[0].Routes[?GatewayId=='$ep' || VpcEndpointId=='$ep'].DestinationCidrBlock" --output text); do
         aws ec2 delete-route --route-table-id "$rt" --destination-cidr-block "$c" && echo "  라우팅 삭제: $rt $c → $ep"
       done
     done
