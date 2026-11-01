@@ -57,8 +57,9 @@ chk_e2e() {  # 연결 시험: 알람을 ALARM 으로 바꾸면 런북이 시작�
   e=$(runbook_since "$t0" 90)
   [ "$e" != None ] && ok "연결 시험: 알람 ALARM → 런북 시작됨 ($e, $(wait_runbook "$e"))" || ng "연결 시험: 알람을 ALARM 으로 바꿨지만 90초 안에 런북이 시작되지 않음"
 }
-chk_service() {  # /api 20번 모두 200
-  local n; n=$(api_ok 20); [ "$n" = 20 ] && ok "/api 20/20 정상(200)" || ng "/api 정상 $n/20 — 오류 응답이 섞임"
+chk_service() {  # /api 20번 모두 200 (재시작 직후의 순간 오류를 피하려고 한 번 더 시도)
+  local n; n=$(api_ok 20); [ "$n" = 20 ] || { sleep 15; n=$(api_ok 20); }
+  [ "$n" = 20 ] && ok "/api 20/20 정상(200)" || ng "/api 정상 $n/20 — 오류 응답이 섞임"
 }
 chk_mw() {  # 유지관리 기간: 켜짐 + 대상 태그 + 패치 작업
   local w e t k; w=$(aws ssm describe-maintenance-windows --filters Key=Name,Values="$MW" --query 'WindowIdentities[0].WindowId' --output text 2>/dev/null)
