@@ -29,5 +29,10 @@ done
 aws ssm delete-document --name "$SID-iac-restart-app" 2>/dev/null && echo "  SSM 문서 삭제"
 N=$(aws ssm get-parameters-by-path --path /opslab/iac --query 'Parameters[].Name' --output text)
 [ -n "${N// /}" ] && aws ssm delete-parameters --names $N >/dev/null && echo "  SSM /opslab/iac/* 삭제"
+# 콘솔 "지금 패치 적용"이 남기는 연결(AWS-PatchNowAssociation) — 대상이 내 앱 서버 태그인 것만
+for a in $(aws ssm list-associations --association-filter-list key=AssociationName,value=AWS-PatchNowAssociation \
+            --query "Associations[?Targets[?contains(Values,'$SID-cmp-app')]].AssociationId" --output text 2>/dev/null); do
+  aws ssm delete-association --association-id "$a" && echo "  지금 패치 적용 연결 삭제: $a"
+done
 aws logs delete-log-group --log-group-name "/aws/lambda/$SID-iac-precheck" 2>/dev/null && echo "  Lambda 로그 그룹 삭제"
 exit 0
