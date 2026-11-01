@@ -8,7 +8,7 @@ bad=""; for x in $(asg_ids); do [ "$(ping_of $x)" = Online ] || bad="$bad $x"; d
 if [ "$V" = 1 ] && [ -n "$I" ] && [[ " $(asg_ids) " == *" $I "* ]]; then bad="$bad $I"; fi
 bad=$(tr ' ' '\n' <<<"$bad" | sed '/^$/d' | sort -u | xargs)
 if [ -n "$bad" ]; then
-  T0=$(date -u +%s); aws ec2 reboot-instances --instance-ids $bad && echo "  재부팅: $bad"
+  aws ec2 reboot-instances --instance-ids $bad && echo "  재부팅: $bad"; sleep 45; T0=$(date -u +%s)
   for i in $(seq 1 36); do ok=1
     for x in $bad; do
       lp=$(aws ssm describe-instance-information --filters Key=InstanceIds,Values="$x" --query 'InstanceInformationList[0].LastPingDateTime' --output text 2>/dev/null)
