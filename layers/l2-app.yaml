@@ -1,8 +1,9 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: >
-  [환경 층 L2 — 앱 계층] cmp 모듈 완료 상태(정상, 재발 방지 알람 포함):
-  보안 그룹·시작 템플릿·타깃 그룹·ALB·ASG·확장 정책·알람. 리소스 이름은 cmp 모듈과 같다(<학번>-cmp-*).
-  스택 이름: <학번>-l2 (common/start.sh 가 배포). L1 층이 먼저 있어야 한다.
+# [환경 층 L2 — 앱 계층] cmp 모듈 완료 상태(정상, 재발 방지 알람 포함):
+# 보안 그룹·시작 템플릿·타깃 그룹·ALB·ASG·확장 정책·알람. 리소스 이름은 cmp 모듈과 같다(<학번>-cmp-*).
+# 스택 이름: <학번>-l2 (common/start.sh 가 배포). L1 층이 먼저 있어야 한다.
+Description: >-
+  opslab L2 app layer (stack <SID>-l2, deployed by common/start.sh; needs L1): cmp module done state - security groups, launch template, target group, ALB, ASG, scaling policy, alarms.
 
 Parameters:
   StudentId:

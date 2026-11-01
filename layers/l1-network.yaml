@@ -1,14 +1,15 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: >
-  [환경 층 L1 — 네트워크 기반] VPC, 서브넷 4개(퍼블릭 2·프라이빗 2), IGW, NAT Gateway 1개,
-  EC2 역할(권한 경계 지정), 부하 전용 EC2. 스택 이름: <학번>-l1 (common/start.sh 가 배포).
-  L0 층(권한 경계)이 먼저 있어야 한다.
+# [환경 층 L1 — 네트워크 기반] VPC, 서브넷 4개(퍼블릭 2·프라이빗 2), IGW, NAT Gateway 1개,
+# EC2 역할(권한 경계 지정), 부하 전용 EC2. 스택 이름: <학번>-l1 (common/start.sh 가 배포).
+# L0 층(권한 경계)이 먼저 있어야 한다.
+Description: >-
+  opslab L1 network layer (stack <SID>-l1, deployed by common/start.sh; needs L0): VPC, 4 subnets, IGW, 1 NAT gateway, EC2 role with boundary, load generator EC2.
 
 Parameters:
   StudentId:
     Type: String
     AllowedPattern: "s[0-9]{2}"
-    Description: 학번 (예 s01)
+    Description: Student ID (e.g. s01)   # 학번 (예 s01)
   AmiId:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64

@@ -1,8 +1,9 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: >
-  [net 모듈 완료 상태] 수강생이 1단계에서 CLI로 직접 구축하는 것의 정상 상태(재발 방지 설정 포함):
-  Transit Gateway·연결 2개·라우팅, STS 인터페이스 엔드포인트, 서비스 서브넷 NACL, Network Firewall(규칙·정책·로그),
-  VPC Flow Logs, NAT 포트 할당 오류 알람. 따라잡기·모듈 시험용(common/start.sh net full). 스택 이름: <학번>-net-done.
+# [net 모듈 완료 상태] 수강생이 1단계에서 CLI로 직접 구축하는 것의 정상 상태(재발 방지 설정 포함):
+# Transit Gateway·연결 2개·라우팅, STS 인터페이스 엔드포인트, 서비스 서브넷 NACL, Network Firewall(규칙·정책·로그),
+# VPC Flow Logs, NAT 포트 할당 오류 알람. 따라잡기·모듈 시험용(common/start.sh net full). 스택 이름: <학번>-net-done.
+Description: >-
+  opslab net - done state stack <SID>-net-done (catch-up and module test only): Transit Gateway and routes, STS endpoint, NACL, Network Firewall, Flow Logs, NAT alarm.
 
 Parameters:
   StudentId:

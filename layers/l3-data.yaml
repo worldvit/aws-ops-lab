@@ -1,8 +1,9 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: >
-  [환경 층 L3 — 데이터 계층] data 모듈 완료 상태(정상, 재발 방지 알람 포함): Aurora PostgreSQL 클러스터(라이터·리더),
-  서브넷 그룹·보안 그룹·파라미터 그룹, 앱 접속정보(SSM Parameter Store /opslab/app/db/*, data 모듈은 평문 String).
-  스택 이름: <학번>-l3 (common/start.sh 가 배포한 뒤 layers/l3-data.init.sh 로 앱 계정·테이블을 만든다). L1·L2 층이 먼저 있어야 한다.
+# [환경 층 L3 — 데이터 계층] data 모듈 완료 상태(정상, 재발 방지 알람 포함): Aurora PostgreSQL 클러스터(라이터·리더),
+# 서브넷 그룹·보안 그룹·파라미터 그룹, 앱 접속정보(SSM Parameter Store /opslab/app/db/*, data 모듈은 평문 String).
+# 스택 이름: <학번>-l3 (common/start.sh 가 배포한 뒤 layers/l3-data.init.sh 로 앱 계정·테이블을 만든다). L1·L2 층이 먼저 있어야 한다.
+Description: >-
+  opslab L3 data layer (stack <SID>-l3, deployed by common/start.sh; needs L1, L2): data module done state - Aurora PostgreSQL writer/reader, subnet/security/parameter groups, app DB settings in SSM /opslab/app/db/*.
 
 Parameters:
   StudentId:
