@@ -1,8 +1,11 @@
 AWSTemplateFormatVersion: "2010-09-09"
+# [iac 모듈 — 수강생이 직접 배포·운영하는 스택] 스택 이름: <학번>-iac-app (L1·L2 층이 먼저 있어야 한다)
+# ALB /promo 규칙(고정 응답), 배포 산출물 S3 버킷, 관리용 보안 그룹, 배포 전 사전 점검(사용자 지정 리소스 + Lambda).
+# 배포는 변경셋으로 검토한 뒤 실행한다.
+# Description 은 영어로 둔다 — CloudFormation 은 Description 의 한글을 '???'로 바꿔 콘솔에 보여 준다.
 Description: >
-  [iac 모듈 — 수강생이 직접 배포·운영하는 스택] 스택 이름: <학번>-iac-app (L1·L2 층이 먼저 있어야 한다)
-  ALB /promo 규칙(고정 응답), 배포 산출물 S3 버킷, 관리용 보안 그룹, 배포 전 사전 점검(사용자 지정 리소스 + Lambda).
-  배포는 변경셋으로 검토한 뒤 실행한다.
+  opslab iac - student-managed stack <SID>-iac-app (needs L1, L2): ALB /promo rule, artifact bucket,
+  admin security group, pre-deploy check (custom resource + Lambda). Review with a change set before executing.
 
 Parameters:
   StudentId:
@@ -11,19 +14,19 @@ Parameters:
   PromoText:
     Type: String
     Default: v1
-    Description: /promo 가 돌려줄 문구(릴리스 버전)
+    Description: text returned by /promo (release version)
   AdminSgName:
     Type: String
     Default: ""
-    Description: 관리용 보안 그룹 이름(비우면 <학번>-iac-admin-sg)
+    Description: admin security group name (empty = <SID>-iac-admin-sg)
   RulePriority:
     Type: Number
     Default: 10
-    Description: ALB 리스너 규칙 우선순위(리스너 안에서 겹치면 안 됨)
+    Description: ALB listener rule priority (must be unique in the listener)
   BucketSuffix:
     Type: String
     Default: ""
-    Description: 산출물 버킷 이름 뒤에 붙는 글자(바꾸면 버킷이 새로 만들어짐 — 교체)
+    Description: suffix of the artifact bucket name (changing it REPLACES the bucket)
 
 Conditions:
   DefaultSgName: !Equals [!Ref AdminSgName, ""]
