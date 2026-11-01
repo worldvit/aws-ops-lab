@@ -83,8 +83,8 @@ set_error_rate() {  # 앱 서버 모두(ASG 기준)의 /api 오류율을 $1 로 
 
 # ── Automation 실행 → 최종 상태 (최대 $2초, 기본 300)
 run_runbook() {  # $1=추가 매개변수 JSON(선택)
-  local p='{}'; [ -n "${1:-}" ] && p=$1
-  aws ssm start-automation-execution --document-name "$RUNBOOK" --parameters "$p" --query AutomationExecutionId --output text 2>&1
+  if [ -n "${1:-}" ]; then aws ssm start-automation-execution --document-name "$RUNBOOK" --parameters "$1" --query AutomationExecutionId --output text 2>&1
+  else aws ssm start-automation-execution --document-name "$RUNBOOK" --query AutomationExecutionId --output text 2>&1; fi
 }
 wait_runbook() {  # $1=실행 ID
   local i s; [[ "${1:-}" =~ ^[0-9a-f-]{36}$ ]] || { echo None; return; }
