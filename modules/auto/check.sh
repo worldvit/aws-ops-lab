@@ -20,7 +20,7 @@ chk_session() {  # 세션 접속 + 접속 기록(로그 그룹에 남는지)
   if grep -q "$tok" <<<"$out"; then ok "세션 접속 $i: 명령 실행됨"
   else ng "세션 접속 $i 실패: $(grep -v '^$' <<<"$out" | grep -v "$tok" | tail -2 | tr '\n' ' ' | cut -c1-200)"; return; fi
   for _ in $(seq 1 12); do
-    n=$(aws logs filter-log-events --log-group-name "$LOGG" --filter-pattern "\"$tok\"" --query 'length(events)' --output text 2>/dev/null); [ "${n:-0}" -ge 1 ] && break; sleep 5
+    n=$(aws logs filter-log-events --log-group-name "$LOGG" --filter-pattern "\"$tok\"" --query 'events[].eventId' --output text 2>/dev/null | wc -w); [ "$n" -ge 1 ] && break; sleep 5
   done
   [ "${n:-0}" -ge 1 ] && ok "접속 기록이 $LOGG 에 남음" || ng "세션은 됐지만 접속 기록이 $LOGG 에 60초 안에 남지 않음"
 }
