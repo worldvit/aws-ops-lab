@@ -8,7 +8,7 @@ if ! aws iam get-role-policy --role-name "$SID-cicd-build-role" --policy-name ec
 fi
 U=$(aws cloudformation describe-stacks --stack-name "$ENVSTACK" --query "Stacks[0].Outputs[?OutputKey=='EcrUri'].OutputValue" --output text)
 aws codebuild update-project --name "$PROJ" --environment "$(aws codebuild batch-get-projects --names "$PROJ" --query 'projects[0].environment' --output json | jq -c --arg u "$U" '.privilegedMode=true | .environmentVariables |= map(if .name=="ECR_URI" then .value=$u else . end)')" >/dev/null && echo "  privilegedMode=true, ECR_URI=$U"
-aws codebuild update-project --name "$PROJ" --source type=CODEPIPELINE,buildspec=cicd/buildspec.yml >/dev/null && echo "  buildspec=cicd/buildspec.yml"
+aws codebuild update-project --name "$PROJ" --source "$(aws codebuild batch-get-projects --names "$PROJ" --query 'projects[0].source' --output json | jq -c '.buildspec="cicd/buildspec.yml"')" >/dev/null && echo "  buildspec=cicd/buildspec.yml"
 sleep 20
 E=$(load exec); r=$(retry_exec "$E"); echo "  실행 ${E:0:8} 다시 실행: $r"
 [ "$r" = Succeeded ] || { r=$(redeploy_good); echo "  정상 릴리스 재배포: $r"; }
