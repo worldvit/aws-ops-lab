@@ -22,7 +22,8 @@ if [ -n "$Z" ] && [ "$Z" != None ]; then
         && echo "  레코드 삭제: app.$SID.$DOM ($(jq -r .SetIdentifier <<<"$rr"))"
     done
 fi
-for h in $(aws route53 list-health-checks --query "HealthChecks[?starts_with(CallerReference,'$SID-auto-')].Id" --output text); do
+# CLI 로 만든 것은 CallerReference(<학번>-auto-…)로, 콘솔로 만든 것(CallerReference 가 임의 값)은 검사 대상(내 ALB 주소 <학번>-cmp-alb-…)으로 찾는다
+for h in $(aws route53 list-health-checks --query "HealthChecks[?starts_with(CallerReference,'$SID-auto-') || starts_with(HealthCheckConfig.FullyQualifiedDomainName || '','$SID-cmp-alb-')].Id" --output text); do
   aws route53 delete-health-check --health-check-id "$h" && echo "  헬스 체크 삭제: $h"
 done
 for g in "/opslab/$SID/sessions" "/opslab/$SID/runcommand"; do aws logs delete-log-group --log-group-name "$g" 2>/dev/null && echo "  로그 그룹 삭제: $g"; done
