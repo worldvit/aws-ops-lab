@@ -47,7 +47,8 @@ chk_chain() {  # 알람 → 규칙 → 런북 구성 + 실패 알림 규칙
   r=$(aws events describe-rule --name "$RULE" --query State --output text 2>/dev/null)
   [ "$r" = ENABLED ] && ok "규칙 $RULE ENABLED" || ng "규칙 $RULE ${r:-없음}"
   t=$(aws events list-targets-by-rule --rule "$RULE" --query 'Targets[0].[Arn,RoleArn]' --output text 2>/dev/null)
-  [ "$t" = "$RUNBOOK_ARN	$EVENTS_ROLE_ARN" ] && ok "규칙 대상: 런북 $RUNBOOK, 역할 $SID-auto-events-role" || ng "규칙 대상: ${t:-없음}"
+  # 콘솔로 만든 대상은 버전 접미사(:$DEFAULT) 없이 저장된다 — 둘 다 같은 기본 버전을 실행하므로 모두 인정
+  [ "$t" = "$RUNBOOK_ARN	$EVENTS_ROLE_ARN" ] || [ "$t" = "${RUNBOOK_ARN%:\$DEFAULT}	$EVENTS_ROLE_ARN" ] && ok "규칙 대상: 런북 $RUNBOOK, 역할 $SID-auto-events-role" || ng "규칙 대상: ${t:-없음}"
   aws iam get-role-policy --role-name "$SID-auto-events-role" --policy-name start-automation >/dev/null 2>&1 \
     && ok "EventBridge 역할에 런북 시작 권한(start-automation)" || ng "EventBridge 역할 $SID-auto-events-role 에 start-automation 정책 없음"
   r=$(aws events describe-rule --name "$FRULE" --query State --output text 2>/dev/null)
