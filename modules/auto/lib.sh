@@ -58,9 +58,9 @@ put_pref() {  # 설정 문서를 $1 로그 그룹으로(없으면 만들고, 있
 }
 pref_group() { aws ssm get-document --name "$PREF" --query Content --output text 2>/dev/null | jq -r '.inputs.cloudWatchLogGroupName // ""'; }
 # 비대화형 세션으로 명령 하나 실행 → 출력(세션 연결 시험). $1=인스턴스 $2=표시 문자열
-session_probe() {
+session_probe() {  # stdin 을 /dev/null 로 — 터미널(tty)을 물려주면 플러그인이 터미널을 잡고 놓지 않아 CloudShell 창이 멈춘다
   timeout 60 aws ssm start-session --target "$1" --document-name AWS-StartInteractiveCommand \
-    --parameters "{\"command\":[\"echo $2\"]}" 2>&1 | tr -d '\r'
+    --parameters "{\"command\":[\"echo $2\"]}" </dev/null 2>&1 | tr -d '\r'
 }
 
 # ── Run Command: 태그 대상 + 동시 실행 제한 → "명령ID 대상수 성공수"
