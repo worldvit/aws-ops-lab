@@ -37,7 +37,7 @@ VPC=$(aws cloudformation list-exports --query "Exports[?Name=='$SID-base-VpcId']
 for s in $(aws rds describe-db-cluster-snapshots --snapshot-type manual --query "DBClusterSnapshots[?starts_with(DBClusterSnapshotIdentifier,'$SID-rel-') || DBClusterIdentifier=='$SID-data-db' || (VpcId=='${VPC:-none}' && VpcId!=null)].DBClusterSnapshotIdentifier" --output text); do
   aws rds delete-db-cluster-snapshot --db-cluster-snapshot-identifier "$s" >/dev/null && echo "  스냅샷 삭제: $s"; done
 # 보존된 자동 백업 — 콘솔에서 복원본을 지울 때 "자동 백업 보존"이 기본 체크. 원본(<학번>-data-db)은 L3 스택 삭제 때 처리되므로 건드리지 않는다
-for r in $(aws rds describe-db-cluster-automated-backups --query "DBClusterAutomatedBackups[?VpcId=='${VPC:-none}' && DBClusterIdentifier!='$SID-data-db'].DbClusterResourceId" --output text 2>/dev/null); do
+for r in $(aws rds describe-db-cluster-automated-backups --query "DBClusterAutomatedBackups[?Status=='retained' && DBClusterIdentifier!='$SID-data-db' && (VpcId=='${VPC:-none}' || contains(DBClusterIdentifier,'$SID'))].DbClusterResourceId" --output text 2>/dev/null); do
   aws rds delete-db-cluster-automated-backup --db-cluster-resource-id "$r" >/dev/null 2>&1 && echo "  보존된 자동 백업 삭제: $r"; done
 aws rds modify-db-cluster --db-cluster-identifier "$SID-data-db" --no-deletion-protection --apply-immediately >/dev/null 2>&1 && echo "  Aurora 삭제 방지 해제"
 I=$(aws ec2 describe-instances --filters Name=tag:Owner,Values="$SID" Name=tag:Module,Values=rel Name=instance-state-name,Values=pending,running,stopping,stopped --query 'Reservations[].Instances[].InstanceId' --output text)
