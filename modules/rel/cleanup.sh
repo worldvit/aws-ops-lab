@@ -20,11 +20,16 @@ b.object_versions.delete(); b.delete()
 PY
   echo "  버킷 삭제: ${b%%:*}"
 done
-if aws rds describe-db-clusters --db-cluster-identifier "$SID-rel-restore" >/dev/null 2>&1; then
-  aws rds delete-db-instance --db-instance-identifier "$SID-rel-restore-1" >/dev/null 2>&1
-  aws rds wait db-instance-deleted --db-instance-identifier "$SID-rel-restore-1" 2>/dev/null
-  aws rds delete-db-cluster --db-cluster-identifier "$SID-rel-restore" --skip-final-snapshot >/dev/null 2>&1 && echo "  복원 훈련 클러스터 삭제 요청"
-fi
+# 복원 훈련 클러스터 — CLI 판은 인스턴스 <학번>-rel-restore-1, 콘솔 복원은 <클러스터>-instance-1 처럼 이름이 달라 클러스터의 모든 인스턴스를 지운다
+for c in $(aws rds describe-db-clusters --query "DBClusters[?starts_with(DBClusterIdentifier,'$SID-rel-restore')].DBClusterIdentifier" --output text 2>/dev/null); do
+  aws rds modify-db-cluster --db-cluster-identifier "$c" --no-deletion-protection --apply-immediately >/dev/null 2>&1
+  for i in $(aws rds describe-db-instances --filters Name=db-cluster-id,Values="$c" --query 'DBInstances[].DBInstanceIdentifier' --output text); do
+    aws rds delete-db-instance --db-instance-identifier "$i" >/dev/null 2>&1; done
+  for i in $(aws rds describe-db-instances --filters Name=db-cluster-id,Values="$c" --query 'DBInstances[].DBInstanceIdentifier' --output text); do
+    aws rds wait db-instance-deleted --db-instance-identifier "$i" 2>/dev/null; done
+  aws rds delete-db-cluster --db-cluster-identifier "$c" --skip-final-snapshot >/dev/null 2>&1 && echo "  복원 훈련 클러스터 삭제 요청: $c"
+  for _ in $(seq 1 60); do aws rds describe-db-clusters --db-cluster-identifier "$c" >/dev/null 2>&1 || break; sleep 15; done   # L3 서브넷 그룹·SG 삭제 전에 끝나야 함
+done
 for s in $(aws rds describe-db-cluster-snapshots --snapshot-type manual --query "DBClusterSnapshots[?starts_with(DBClusterSnapshotIdentifier,'$SID-rel-')].DBClusterSnapshotIdentifier" --output text); do
   aws rds delete-db-cluster-snapshot --db-cluster-snapshot-identifier "$s" >/dev/null && echo "  스냅샷 삭제: $s"; done
 aws rds modify-db-cluster --db-cluster-identifier "$SID-data-db" --no-deletion-protection --apply-immediately >/dev/null 2>&1 && echo "  Aurora 삭제 방지 해제"
