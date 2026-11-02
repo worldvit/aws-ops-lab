@@ -20,8 +20,9 @@ b.object_versions.delete(); b.delete()
 PY
   echo "  버킷 삭제: ${b%%:*}"
 done
-# 복원 훈련 클러스터 — CLI 판은 인스턴스 <학번>-rel-restore-1, 콘솔 복원은 <클러스터>-instance-1 처럼 이름이 달라 클러스터의 모든 인스턴스를 지운다
-for c in $(aws rds describe-db-clusters --query "DBClusters[?starts_with(DBClusterIdentifier,'$SID-rel-restore')].DBClusterIdentifier" --output text 2>/dev/null); do
+# 복원 훈련 클러스터 — 이름이 무엇이든(콘솔 복원 화면은 식별자 칸에 database-1 이 미리 들어 있어 이름이 틀리기 쉽다)
+# 내 DB 서브넷 그룹을 쓰는 클러스터 중 원본(<학번>-data-db)이 아닌 것을 모두 지운다. 인스턴스 이름도 제각각이라 클러스터의 모든 인스턴스를 지운다
+for c in $(aws rds describe-db-clusters --query "DBClusters[?DBSubnetGroup=='$SID-data-subnets' && DBClusterIdentifier!='$SID-data-db'].DBClusterIdentifier" --output text 2>/dev/null); do
   aws rds modify-db-cluster --db-cluster-identifier "$c" --no-deletion-protection --apply-immediately >/dev/null 2>&1
   for i in $(aws rds describe-db-instances --filters Name=db-cluster-id,Values="$c" --query 'DBInstances[].DBInstanceIdentifier' --output text); do
     aws rds delete-db-instance --db-instance-identifier "$i" >/dev/null 2>&1; done
