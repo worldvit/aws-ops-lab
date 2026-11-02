@@ -31,7 +31,7 @@ for c in $(aws rds describe-db-clusters --query "DBClusters[?DBSubnetGroup=='$SI
   aws rds delete-db-cluster --db-cluster-identifier "$c" --skip-final-snapshot >/dev/null 2>&1 && echo "  복원 훈련 클러스터 삭제 요청: $c"
   for _ in $(seq 1 60); do aws rds describe-db-clusters --db-cluster-identifier "$c" >/dev/null 2>&1 || break; sleep 15; done   # L3 서브넷 그룹·SG 삭제 전에 끝나야 함
 done
-for s in $(aws rds describe-db-cluster-snapshots --snapshot-type manual --query "DBClusterSnapshots[?starts_with(DBClusterSnapshotIdentifier,'$SID-rel-')].DBClusterSnapshotIdentifier" --output text); do
+for s in $(aws rds describe-db-cluster-snapshots --snapshot-type manual --query "DBClusterSnapshots[?starts_with(DBClusterSnapshotIdentifier,'$SID-rel-') || DBClusterIdentifier=='$SID-data-db'].DBClusterSnapshotIdentifier" --output text); do
   aws rds delete-db-cluster-snapshot --db-cluster-snapshot-identifier "$s" >/dev/null && echo "  스냅샷 삭제: $s"; done
 aws rds modify-db-cluster --db-cluster-identifier "$SID-data-db" --no-deletion-protection --apply-immediately >/dev/null 2>&1 && echo "  Aurora 삭제 방지 해제"
 I=$(aws ec2 describe-instances --filters Name=tag:Owner,Values="$SID" Name=tag:Module,Values=rel Name=instance-state-name,Values=pending,running,stopping,stopped --query 'Reservations[].Instances[].InstanceId' --output text)
