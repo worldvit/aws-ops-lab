@@ -30,6 +30,9 @@ chk_runcmd() {  # ASG 의 모든 서버에 이름 태그 + 태그 대상 Run Com
   for x in $(asg_ids); do [ "$(aws ec2 describe-tags --filters Name=resource-id,Values="$x" Name=key,Values=Name --query 'Tags[0].Value' --output text)" = "$APP_TAG" ] || miss="$miss $x"; done
   [ -z "$miss" ] && ok "ASG 서버 ${want}대 모두 Name=$APP_TAG 태그" || ng "Name 태그가 없거나 다른 서버:$miss (태그 대상 명령에서 빠짐)"
   read -r c t s <<<"$(run_tag 'hostname')"
+  # 태그를 방금 고친 경우 Run Command 의 태그 해석이 몇 분 늦게 따라온다 — 태그가 모두 맞으면 1분 간격으로 최대 5번 다시 본다
+  for _ in 1 2 3 4 5; do [ -z "$miss" ] && [ "${t:-0}" -lt "$want" ] || break
+    echo "  (태그 반영 대기: 대상 ${t:-0}대 — 1분 뒤 다시 확인)"; sleep 60; read -r c t s <<<"$(run_tag 'hostname')"; done
   [ "$t" = "$want" ] && [ "$s" = "$want" ] && ok "Run Command(태그 Name=$APP_TAG) 대상 $t대 / 성공 $s대 (ASG $want대)" \
     || ng "Run Command 대상 ${t:-0}대 / 성공 ${s:-0}대 — ASG 는 ${want}대 (명령 $c)"
 }
