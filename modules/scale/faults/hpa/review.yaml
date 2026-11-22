@@ -3,7 +3,7 @@ lab: scale-1
 checks:
 - name: HPA 가 CPU 사용률을 읽고 대상을 찾으며, 최소 < 최대이고 앱에 CPU 요청이 있다
   run: bash ~/opslab/modules/scale/state.sh hpa
-  fix: metrics-server 파드 수(kubectl -n kube-system scale deploy metrics-server --replicas=2), 앱 CPU 요청(helm upgrade … --reuse-values --set resources.requests.cpu=100m), HPA 대상 이름(opslab-app)을 기준으로 되돌리세요
+  fix: metrics-server 파드 수(kubectl -n kube-system scale deploy metrics-server --replicas=2), 앱 CPU 요청(helm upgrade … --reuse-values --set resources.requests.cpu=50m), HPA 대상 이름(opslab-app)을 기준으로 되돌리세요
   ref: 해답 — 변형별 조치
 - name: 트래픽 급증 파드를 멈췄고 Pending 파드가 없다
   run: '! kubectl -n app get deploy opslab-spike >/dev/null 2>&1 && bash ~/opslab/modules/scale/state.sh pending'

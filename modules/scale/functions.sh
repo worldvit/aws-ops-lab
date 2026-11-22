@@ -36,7 +36,7 @@ irsa_role() {  # $1=역할 이름 $2=네임스페이스 $3=서비스 계정 $4=�
 
 # ── 1) HPA — 부하에 따라 파드 수를 늘린다. 기준은 "요청(requests) 대비 CPU 사용률"이다
 HPA_SET=(--set hpa.enabled=true --set hpa.minReplicas=2 --set hpa.maxReplicas=8 --set hpa.cpuUtilization=50
-         --set resources.requests.cpu=100m --set resources.requests.memory=128Mi --set resources.limits.cpu=500m --set resources.limits.memory=256Mi --set preStopSleep=15
+         --set resources.requests.cpu=50m --set resources.requests.memory=128Mi --set resources.limits.cpu=500m --set resources.limits.memory=256Mi --set preStopSleep=15
          --set 'nodeSelector.opslab/pool=default')   # 앱은 관리형 노드에만 — Karpenter 가 노드를 정리(통합)할 때 앱 파드가 쫓겨나 5xx 가 나지 않게
 hpa_on() {  # 파드 수가 자주 바뀌므로 ALB 준비 게이트를 켠다 — 새 파드가 ALB 에서 healthy 가 돼야 Ready, 옛 파드는 그다음에 내려간다
   kubectl label namespace "$APP_NS" elbv2.k8s.aws/pod-readiness-gate-inject=enabled --overwrite >/dev/null

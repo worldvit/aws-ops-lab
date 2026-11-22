@@ -7,7 +7,7 @@ source ~/opslab-env.sh
 source "$EKS_ROOT/modules/scale/functions.sh"
 kube_login
 
-echo "== 구축 1: HPA — 요청(requests) 100m 기준 CPU 50% 를 넘으면 파드 2→8개"
+echo "== 구축 1: HPA — 요청(requests) 50m 기준 CPU 50% 를 넘으면 파드 2→8개"
 hpa_on || { echo "❌ HPA 설정 실패"; exit 1; }
 for i in $(seq 1 18); do [ "$(hpa_json | jq -r '.status.currentMetrics[0].resource.current.averageUtilization // empty')" != "" ] && break; sleep 10; done
 echo "   $(hpa_line)"
