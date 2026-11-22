@@ -1,0 +1,15 @@
+# scale-3 재발 방지로 확인할 항목 — common/review.sh 가 읽는다.
+lab: scale-3
+checks:
+- name: 드레인하던 노드가 교체됐다(클러스터에 없다)
+  run: bash ~/opslab/modules/scale/state.sh replaced
+  fix: kubectl drain <노드> --ignore-daemonsets --delete-emptydir-data 로 비운 뒤 aws autoscaling terminate-instance-in-auto-scaling-group --instance-id <ID> --no-should-decrement-desired-capacity
+  ref: 해답 — 조치
+- name: 노드가 모두 Ready 이고 점검 중(cordon) 노드가 없다
+  run: bash ~/opslab/modules/scale/state.sh nodes
+  fix: 새 노드가 Ready 가 될 때까지 기다리고(3~5분), 남은 cordon 은 kubectl uncordon
+  ref: 해답 — 정상 확인
+- name: 런북에 드레인 옵션(--ignore-daemonsets·--delete-emptydir-data)과 그 의미가 있다
+  run: grep -qE "ignore-daemonsets" ~/opslab-work/scale/runbook-scale-3.md && grep -qE "delete-emptydir-data" ~/opslab-work/scale/runbook-scale-3.md
+  fix: 런북 4. 조치에 두 옵션을 적고, emptyDir 데이터는 사라진다는 점(지워도 되는지 담당자 확인)을 함께 적으세요
+  ref: 해답 — 런북 예시

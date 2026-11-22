@@ -1,0 +1,17 @@
+# PostgreSQL 디스크 스냅샷 — EBS CSI 드라이버가 EBS 스냅샷을 뜬다(스냅샷 컨트롤러는 K1 층 애드온)
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata: { name: opslab-ebs, labels: { course: opslab } }
+driver: ebs.csi.aws.com
+deletionPolicy: Delete                                  # VolumeSnapshot 을 지우면 EBS 스냅샷도 지운다(정리 비용)
+parameters:
+  tagSpecification_1: "Course=opslab"
+  tagSpecification_2: "Module=scale"
+  tagSpecification_3: "Owner=__SID__"
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata: { name: pg-baseline, namespace: app, labels: { course: opslab } }
+spec:
+  volumeSnapshotClassName: opslab-ebs
+  source: { persistentVolumeClaimName: data-postgres-0 }

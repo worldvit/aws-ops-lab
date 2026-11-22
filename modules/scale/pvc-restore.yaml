@@ -1,0 +1,12 @@
+# 스냅샷에서 PostgreSQL 디스크(PVC) 복원 — StatefulSet 이 찾는 이름(data-postgres-0)으로 만든다
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-postgres-0
+  namespace: app
+  labels: { course: opslab, app.kubernetes.io/name: postgres }
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: gp3
+  resources: { requests: { storage: 5Gi } }
+  dataSource: { apiGroup: snapshot.storage.k8s.io, kind: VolumeSnapshot, name: pg-baseline }

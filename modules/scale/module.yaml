@@ -1,0 +1,21 @@
+id: scale
+title: 스케일 · 업그레이드 · 비용
+hours: 8
+requires: K3        # 아침에 배포: L1 + K1~K3(클러스터·샘플 앱·DB·ALB). DB 접속정보는 쿠버네티스 Secret
+eks: prev           # 클러스터를 과정 파일의 eks_version_prev 로 만든다 — 운영 Lab scale-4 에서 eks_version 으로 업그레이드
+builds: —           # 층을 만들지 않음 — 직접 구축: HPA 튜닝, 클러스터 오토스케일러(실습 후 제거), Karpenter(NodePool·EC2NodeClass), DB 스냅샷. 따라잡기는 full.sh
+topics:
+  - HPA 미동작 원인 추적 (구축 1 + scale-1)
+  - Cluster Autoscaler (구축 2 + scale-2 도입)
+  - Karpenter 노드 미할당 (구축 3 + scale-2)
+  - 리소스 요청과 제한 튜닝 (구축 1 + scale-1 ②)
+  - 노드 그룹 교체와 드레인 (scale-3)
+  - 클러스터 버전 업그레이드 절차 (운영 Lab scale-4 — 따라하기 페이지)
+  - 파드 기반 Cache · Vector Store 복구 (구축 4 + scale-5 심화)
+  - 노드 비용 구조와 유휴 용량 정리 (운영 Lab scale-6 — 따라하기 페이지)
+# Lab ID | 장애 폴더 | 변형 수 | 구분 | 장애 유형(주입할 때 보여 줌)
+labs:
+  - scale-1 | hpa    | 3 | 필수 | 트래픽이 늘었는데 파드 수가 늘지 않는 장애(HPA)
+  - scale-2 | nodes  | 3 | 필수 | 새 파드가 놓일 노드가 생기지 않아 Pending 으로 남는 장애(Karpenter)
+  - scale-3 | drain  | 2 | 필수 | 노드 교체 작업 중 드레인이 실패해 작업이 멈춘 장애
+  - scale-5 | data   | 2 | 심화 | DB(PostgreSQL·pgvector) 파드의 디스크를 잃었거나 다른 AZ 로 옮기려다 뜨지 않는 장애

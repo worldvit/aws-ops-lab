@@ -1,0 +1,10 @@
+# Karpenter 1.15.3 (vendor/charts/karpenter) — 실습용 최소 설정. 이미지·클러스터 이름·IRSA 는 functions.sh 의 kp_install 이 넣는다.
+replicas: 1                          # 컨트롤러 1개(실습). 운영은 2개(고가용성)
+controller:
+  resources:
+    requests: { cpu: 200m, memory: 256Mi }
+    limits: { memory: 512Mi }
+settings:
+  interruptionQueue: ""              # 스팟 중단 알림 큐(SQS)는 쓰지 않는다 — 온디맨드만 쓰므로
+  featureGates: {}
+logLevel: info
