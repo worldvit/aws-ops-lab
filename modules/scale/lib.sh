@@ -18,7 +18,7 @@ restore() {  # 원복: 실습용 부하·배치 정지 → metrics-server·앱 �
   local n
   spike stop; batch stop; kubectl -n "$APP_NS" delete deploy opslab-cache-worker opslab-idle --ignore-not-found --wait=false >/dev/null
   [ "$(kubectl -n kube-system get deploy metrics-server -o jsonpath='{.spec.replicas}' 2>/dev/null)" = 0 ] && kubectl -n kube-system scale deploy metrics-server --replicas=2 >/dev/null && echo "  metrics-server 다시 2개"
-  helm -n "$APP_NS" upgrade opslab-app "$EKS_ROOT/charts/opslab-app" --reuse-values "${HPA_SET[@]}" --force --wait --timeout 5m >/dev/null && echo "  앱·HPA 를 기준 상태로(요청 100m·HPA 2~8·CPU 50%)"
+  helm -n "$APP_NS" upgrade opslab-app "$EKS_ROOT/charts/opslab-app" --reuse-values "${HPA_SET[@]}" --wait --timeout 5m >/dev/null && echo "  앱·HPA 를 기준 상태로(요청 100m·HPA 2~8·CPU 50%)"
   kp_nodes && echo "  Karpenter EC2NodeClass·NodePool 을 기준 상태로"
   for n in $(kubectl get nodes --no-headers | awk '$2 ~ /SchedulingDisabled/ {print $1}'); do kubectl uncordon "$n" >/dev/null && echo "  uncordon $n"; done
   if [ -n "$(kubectl -n "$APP_NS" get sts postgres -o jsonpath='{.spec.template.spec.nodeSelector}' 2>/dev/null)" ]; then
@@ -27,7 +27,7 @@ restore() {  # 원복: 실습용 부하·배치 정지 → metrics-server·앱 �
   fi
   kubectl -n "$APP_NS" rollout status sts postgres --timeout=300s >/dev/null 2>&1
   [ "$(pg_marker)" = scale-baseline ] || { pg_restore && echo "  PostgreSQL 디스크를 스냅샷(pg-baseline)에서 복원"; }
-  kubectl -n "$APP_NS" rollout restart deploy opslab-app >/dev/null; kubectl -n "$APP_NS" rollout status deploy opslab-app --timeout=300s >/dev/null
+  kubectl -n "$APP_NS" rollout status deploy opslab-app --timeout=300s >/dev/null
   for n in $(seq 1 30); do [ -z "$(pending_pods)" ] && break; sleep 10; done
   echo "  노드 $(nodes_ready)대 Ready, Pending 파드 $(pending_pods | wc -l)개, HPA $(hpa_line)"
 }

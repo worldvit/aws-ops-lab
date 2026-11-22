@@ -31,7 +31,7 @@ irsa_role() {  # $1=역할 이름 $2=네임스페이스 $3=서비스 계정 $4=�
 
 # ── 1) HPA — 부하에 따라 파드 수를 늘린다. 기준은 "요청(requests) 대비 CPU 사용률"이다
 HPA_SET=(--set hpa.enabled=true --set hpa.minReplicas=2 --set hpa.maxReplicas=8 --set hpa.cpuUtilization=50
-         --set resources.requests.cpu=100m --set resources.requests.memory=128Mi --set resources.limits.cpu=500m --set resources.limits.memory=256Mi)
+         --set resources.requests.cpu=100m --set resources.requests.memory=128Mi --set resources.limits.cpu=500m --set resources.limits.memory=256Mi --set preStopSleep=15)
 hpa_on() { helm -n "$APP_NS" upgrade opslab-app "$EKS_ROOT/charts/opslab-app" --reuse-values "${HPA_SET[@]}" --wait --timeout 5m >/dev/null; }
 hpa_json() { kubectl -n "$APP_NS" get hpa opslab-app -o json 2>/dev/null; }
 hpa_line() { hpa_json | jq -r '"CPU \(.status.currentMetrics[0].resource.current.averageUtilization // "?")%/\(.spec.metrics[0].resource.target.averageUtilization)% · 파드 \(.status.currentReplicas // 0)→\(.status.desiredReplicas // 0) (최소 \(.spec.minReplicas)·최대 \(.spec.maxReplicas))"'; }

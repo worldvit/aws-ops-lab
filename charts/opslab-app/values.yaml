@@ -39,6 +39,9 @@ waitForDb:
   enabled: true
   image: public.ecr.aws/docker/library/busybox:1.37
 
+# 종료 전 대기(초) — 0 이면 쓰지 않는다. scale 모듈은 15(파드 수가 자주 바뀌므로)
+preStopSleep: 0
+
 resources:
   requests: { cpu: 100m, memory: 128Mi }
   limits: { cpu: 500m, memory: 256Mi }

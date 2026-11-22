@@ -72,6 +72,9 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports: [{ name: http, containerPort: 8080 }]
+          {{- if .Values.preStopSleep }}          {{/* 파드가 종료될 때 ALB 가 대상에서 먼저 빼도록 잠시 기다린다(축소·교체 중 5xx 방지) */}}
+          lifecycle: { preStop: { exec: { command: ["sleep", "{{ .Values.preStopSleep }}"] } } }
+          {{- end }}
           {{- if .Values.config.data }}
           envFrom:
             - configMapRef: { name: {{ .Values.config.name | default (printf "%s-config" .Release.Name) }} }
