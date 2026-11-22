@@ -34,7 +34,7 @@ HPA_SET=(--set hpa.enabled=true --set hpa.minReplicas=2 --set hpa.maxReplicas=8 
          --set resources.requests.cpu=100m --set resources.requests.memory=128Mi --set resources.limits.cpu=500m --set resources.limits.memory=256Mi)
 hpa_on() { helm -n "$APP_NS" upgrade opslab-app "$EKS_ROOT/charts/opslab-app" --reuse-values "${HPA_SET[@]}" --wait --timeout 5m >/dev/null; }
 hpa_json() { kubectl -n "$APP_NS" get hpa opslab-app -o json 2>/dev/null; }
-hpa_line() { kubectl -n "$APP_NS" get hpa opslab-app --no-headers 2>/dev/null | awk '{print "목표/현재 "$3" 최소 "$4" 최대 "$5" 파드 "$6}'; }
+hpa_line() { hpa_json | jq -r '"CPU \(.status.currentMetrics[0].resource.current.averageUtilization // "?")%/\(.spec.metrics[0].resource.target.averageUtilization)% · 파드 \(.status.currentReplicas // 0)→\(.status.desiredReplicas // 0) (최소 \(.spec.minReplicas)·최대 \(.spec.maxReplicas))"'; }
 spike() {  # start [병렬 수] | stop — 샘플 앱 Service 로 쉬지 않고 요청을 보내는 "트래픽 급증" 파드(CPU 를 올린다)
   if [ "${1:-start}" = stop ]; then kubectl -n "$APP_NS" delete deploy opslab-spike --ignore-not-found --wait=false >/dev/null; return 0; fi
   kubectl apply -f - >/dev/null <<YAML

@@ -19,8 +19,8 @@ spike stop
 echo "== 구축 2: 클러스터 오토스케일러 — 자리가 없으면 노드 그룹을 늘린다(최대 4대)"
 ca_install || { echo "❌ 클러스터 오토스케일러 설치 실패"; exit 1; }
 batch start 3 1
-for i in $(seq 1 60); do [ "$(batch_ready)" = 3/3 ] && break; sleep 10; done
-echo "   배치 $(batch_ready) Running, 노드 $(nodes_ready)대 (노드 그룹 원하는 수 $(ng_json | jq -r .scalingConfig.desiredSize))"
+for i in $(seq 1 60); do [ "$(ng_json | jq -r .scalingConfig.desiredSize)" -ge 4 ] && [ "$(batch_ready)" = 2/3 ] && break; sleep 10; done
+echo "   배치 $(batch_ready) Running, 노드 $(nodes_ready)대 (노드 그룹 원하는 수 $(ng_json | jq -r .scalingConfig.desiredSize) = 최대) — 남은 1개는 최대 크기 때문에 Pending"
 batch stop
 
 echo "== 구축 3: 클러스터 오토스케일러 제거 → Karpenter(NodePool·EC2NodeClass)"
