@@ -12,6 +12,7 @@ env:
   APP_MEM_MB: "50"                 # 시작할 때 잡는 메모리(MB). 평소 사용량 약 100MiB
   APP_DATA_DIR: /opt/app/data      # 시작 표식 파일을 쓰는 곳
   APP_DB_CHECK_ON_START: "1"       # 시작할 때 DB 접속 확인(실패하면 종료)
+  GUNICORN_CMD_ARGS: "--keep-alive=75"   # 빈 연결을 75초 유지 — ALB(60초)보다 먼저 끊으면 ALB 가 끊긴 연결을 써서 가끔 502 가 난다
 
 # DB·캐시 주소 — 같은 네임스페이스의 opslab-data 차트가 만든 서비스. <후속 단계>에서 Aurora 주소로 바꿀 수 있다
 db:
