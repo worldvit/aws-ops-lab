@@ -11,9 +11,10 @@ if ! "$B/kubectl" version --client 2>/dev/null | grep -q "v$KV"; then
   curl -fsSL --retry 3 --retry-delay 2 -o "$B/kubectl" "https://dl.k8s.io/release/$(curl -fsSL --retry 3 --retry-delay 2 "https://dl.k8s.io/release/stable-$KV.txt")/bin/linux/amd64/kubectl"
   chmod +x "$B/kubectl"
 fi
-if ! command -v "$B/helm" >/dev/null; then
-  curl -fsSL --retry 3 --retry-delay 2 https://get.helm.sh/helm-v3.16.3-linux-amd64.tar.gz | tar xz -C "$B" --strip-components 1 linux-amd64/helm
-fi
+for i in 1 2 3; do   # 받다가 끊기면 실행되지 않는 파일이 남는다 — 실행해 보고 안 되면 다시 받는다
+  "$B/helm" version --short >/dev/null 2>&1 && break
+  rm -f "$B/helm"; curl -fsSL --retry 3 --retry-delay 2 https://get.helm.sh/helm-v3.16.3-linux-amd64.tar.gz | tar xz -C "$B" --strip-components 1 linux-amd64/helm; sleep 2
+done
 if ! command -v "$B/eksctl" >/dev/null; then
   curl -fsSL --retry 3 --retry-delay 2 "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz" | tar xz -C "$B"
 fi
