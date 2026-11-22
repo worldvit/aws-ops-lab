@@ -9,7 +9,7 @@ case $V in
   2) # 앱 매니페스트 "정리"로 CPU 요청(requests)이 빠졌다 — HPA 사용률의 분모가 없다
      I=$(kubectl -n "$APP_NS" get deploy opslab-app -o json | jq '[.spec.template.spec.containers[].name] | index("app")')
      kubectl -n "$APP_NS" patch deploy opslab-app --type json -p "[{\"op\":\"remove\",\"path\":\"/spec/template/spec/containers/$I/resources/requests\"}]" >/dev/null
-     kubectl -n "$APP_NS" rollout status deploy opslab-app --timeout=300s >/dev/null ;;
+     kubectl -n "$APP_NS" rollout status deploy opslab-app --timeout=600s >/dev/null ;;
   3) # HPA 를 다시 만들며 대상 이름을 잘못 적었다
      kubectl -n "$APP_NS" patch hpa opslab-app --type merge -p '{"spec":{"scaleTargetRef":{"name":"opslab-ap"}}}' >/dev/null ;;
 esac
