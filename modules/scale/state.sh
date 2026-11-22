@@ -21,7 +21,7 @@ case "${1:-}" in
        && [ "$(nc_json | jq -r '.spec.subnetSelectorTerms[0].tags["karpenter.sh/discovery"]')" = "$SID" ] \
        || { echo "NodePool $(np_json | jq -c '{limits:.spec.limits,ready:[.status.conditions[]?|select(.type=="Ready")|.status]}') EC2NodeClass $(nc_json | jq -c '{subnet:.spec.subnetSelectorTerms,ready:[.status.conditions[]?|select(.type=="Ready")|.status]}')"; exit 1; } ;;
   pending) p=$(pending_pods); [ -z "$p" ] || { echo "$p"; exit 1; } ;;
-  nodes) [ "$(nodes_ready)" -ge 2 ] && [ "$(nodes_ready)" -eq "$(kubectl get nodes --no-headers | wc -l)" ] && ! kubectl get nodes --no-headers | grep -q SchedulingDisabled \
+  nodes) ns=$(nodes_settled); [ "$(grep -c ' True ' <<<"$ns")" -ge 2 ] && ! grep -qv ' True ' <<<"$ns" && ! kubectl get nodes --no-headers | grep -q SchedulingDisabled \
            || { kubectl get nodes --no-headers | awk '{print $1, $2}'; exit 1; } ;;
   replaced) n=$(aws ssm get-parameter --name "/opslab/injections/${LAB:-scale-3}/drained" --query Parameter.Value --output text 2>/dev/null)
             [ -n "$n" ] && ! kubectl get node "$n" >/dev/null 2>&1 || { echo "드레인 대상 노드 $n 이 아직 클러스터에 있습니다"; exit 1; } ;;

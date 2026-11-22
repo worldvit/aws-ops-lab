@@ -18,7 +18,8 @@ verify_main() {
 
   echo "[1] 노드 (전부 Ready, 점검 중 표시 없음)"
   local nn nr nc
-  nn=$(kubectl get nodes --no-headers | wc -l); nr=$(nodes_ready); nc=$(kubectl get nodes --no-headers | grep -c SchedulingDisabled)
+  local ns; ns=$(nodes_settled)   # 막 들어오는 노드(3분 미만)는 빼고 본다
+  nn=$(grep -c . <<<"$ns"); nr=$(grep -c ' True ' <<<"$ns"); nc=$(kubectl get nodes --no-headers | grep -c SchedulingDisabled)
   [ "$nn" -ge 2 ] && [ "$nr" -eq "$nn" ] && ok "노드 $nr/$nn Ready" || ng "노드 Ready $nr/$nn (기준: 2대 이상 전부 Ready)"
   [ "$nc" -eq 0 ] && ok "점검 중(cordon) 노드 없음" || ng "점검 중(SchedulingDisabled) 노드 $nc 대 — 점검이 끝났으면 kubectl uncordon"
 

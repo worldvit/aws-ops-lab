@@ -28,6 +28,6 @@ restore() {  # 원복: 실습용 부하·배치 정지 → metrics-server·앱 �
   kubectl -n "$APP_NS" rollout status sts postgres --timeout=300s >/dev/null 2>&1
   [ "$(pg_marker)" = scale-baseline ] || { pg_restore && echo "  PostgreSQL 디스크를 스냅샷(pg-baseline)에서 복원"; }
   kubectl -n "$APP_NS" rollout status deploy opslab-app --timeout=300s >/dev/null
-  for n in $(seq 1 30); do [ -z "$(pending_pods)" ] && break; sleep 10; done
+  for n in $(seq 1 30); do [ -z "$(pending_pods)" ] && [ "$(nodes_ready)" -eq "$(kubectl get nodes --no-headers | wc -l)" ] && break; sleep 10; done
   echo "  노드 $(nodes_ready)대 Ready, Pending 파드 $(pending_pods | wc -l)개, HPA $(hpa_line)"
 }

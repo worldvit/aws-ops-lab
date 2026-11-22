@@ -18,7 +18,12 @@ ng_size() {  # $1=min $2=max $3=desired — 노드 그룹 크기(이미 같으�
   ng_wait; aws eks update-nodegroup-config --cluster-name "$CLUSTER" --nodegroup-name "$NG" --scaling-config "minSize=$1,maxSize=$2,desiredSize=$3" >/dev/null && ng_wait
 }
 nodes_ready() { kubectl get nodes --no-headers 2>/dev/null | awk '$2=="Ready"' | wc -l; }
-pending_pods() { kubectl get pods -A --field-selector=status.phase=Pending -o json 2>/dev/null | jq -r '.items[] | select(.metadata.deletionTimestamp==null) | "\(.metadata.namespace)/\(.metadata.name)"'; }
+nodes_settled() {  # 막 들어오는 노드(3분 미만)를 뺀 노드 목록 — "이름 상태" (Karpenter·오토스케일러가 새 노드를 붙이는 중이면 잠깐 NotReady 다)
+  kubectl get nodes -o json 2>/dev/null | jq -r --argjson now "$(date +%s)" '.items[] | select(($now - (.metadata.creationTimestamp|fromdate)) > 180)
+    | "\(.metadata.name) \([.status.conditions[]|select(.type=="Ready")|.status][0]) \(.spec.unschedulable // false)"'; }
+pending_pods() {  # Pending 파드(막 들어오는 노드에 붙는 DaemonSet 파드는 뺀다)
+  kubectl get pods -A --field-selector=status.phase=Pending -o json 2>/dev/null | jq -r '.items[] | select(.metadata.deletionTimestamp==null)
+    | select((.metadata.ownerReferences[0].kind // "")!="DaemonSet") | "\(.metadata.namespace)/\(.metadata.name)"'; }
 irsa_role() {  # $1=역할 이름 $2=네임스페이스 $3=서비스 계정 $4=정책 파일
   local iss; iss=$(aws eks describe-cluster --name "$CLUSTER" --query cluster.identity.oidc.issuer --output text | sed 's#^https://##')
   sed -e "s/__ACCT__/$ACCT/g" -e "s#__ISSUER__#$iss#g" -e "s/__NS__/$2/g" -e "s/__SA__/$3/g" "$EKS_ROOT/modules/access/irsa-trust.json" > "/tmp/trust-$1.json"
