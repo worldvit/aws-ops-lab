@@ -1,0 +1,20 @@
+id: heal
+title: 자가 복구와 무중단 운영
+hours: 8
+requires: K5        # 아침에 배포: L1 + K1~K5(클러스터·샘플 앱·ALB·Vault·Argo CD·App of Apps)
+builds: —           # 층을 만들지 않음 — 직접 구축: 노드 3대·노드 자동 복구, Argo Rollouts(카나리 + CloudWatch 분석), probe 재설계·PDB·topology spread(Git 커밋). 따라잡기는 full.sh
+fork: true          # 오늘 브랜치 opslab/heal-<날짜> — 운영 값(gitops/envs/prod/values.yaml)을 커밋으로 바꾼다
+topics:
+  - probe 설계(liveness·readiness·startup 역할 구분) (구축 + heal-1)
+  - 롤아웃 자동 중단 조건 설정 (구축 + heal-2)
+  - PodDisruptionBudget 과 topology spread (구축 + heal-3)
+  - Argo CD self-heal 과 auto-sync 적용 범위 (heal-4 심화)
+  - 노드 문제 자동 감지와 교체 (구축 + heal-5 심화)
+  - 자동화에 따른 장애 확대 사례와 방지 (heal-1 ①, heal-5 ②)
+# Lab ID | 장애 폴더 | 변형 수 | 구분 | 장애 유형(주입할 때 보여 줌)
+labs:
+  - heal-1 | probe    | 3 | 필수 | 건강검진(probe) 설정 때문에 파드가 재시작을 되풀이하거나 손님을 너무 일찍 받는 장애
+  - heal-2 | canary   | 2 | 필수 | 카나리 배포의 자동 판정이 제 역할을 못 하는 장애
+  - heal-3 | disrupt  | 3 | 필수 | 노드 점검·AZ 장애 때 앱이 한꺼번에 내려가거나 점검이 끝나지 않는 장애
+  - heal-4 | selfheal | 1 | 심화 | 긴급 조치를 했는데 몇 초 뒤 원래대로 돌아가는 장애
+  - heal-5 | repair   | 2 | 심화 | 고장 난 노드가 그대로 남거나, 자동 교체가 한꺼번에 일어나는 장애

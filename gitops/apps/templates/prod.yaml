@@ -37,3 +37,7 @@ spec:
       kind: Deployment
       name: opslab-app
       jsonPointers: [ /spec/replicas ]
+    - group: argoproj.io   # heal 모듈부터는 Deployment 대신 Rollout(카나리 배포)이 파드 수를 가진다
+      kind: Rollout
+      name: opslab-app
+      jsonPointers: [ /spec/replicas ]

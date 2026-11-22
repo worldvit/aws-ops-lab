@@ -1,0 +1,19 @@
+# heal-3 재발 방지로 확인할 항목 — common/review.sh 가 읽는다.
+lab: heal-3
+checks:
+- name: PDB 가 있고 드레인이 가능하다(1개 이상 내려가도 됨)
+  run: bash ~/opslab/modules/heal/state.sh pdb
+  fix: '운영 값 pdb 를 enabled: true, minAvailable: 1(또는 maxUnavailable: 1)로 되돌리는 커밋을 푸시하세요'
+  ref: 해답 — 변형 ①② 조치
+- name: AZ 분산 규칙이 있고 파드가 AZ 2곳 이상에 있다
+  run: bash ~/opslab/modules/heal/state.sh spread
+  fix: topologySpreadConstraints(zone) 를 되살리고 nodeSelector 를 지우는 커밋 → 파드가 한 곳에 몰려 있으면 kubectl argo rollouts restart opslab-app -n app
+  ref: 해답 — 변형 ③ 조치
+- name: 노드 3대 모두 Ready 이고 점검 중(cordon) 노드가 없다
+  run: bash ~/opslab/modules/heal/state.sh nodes
+  fix: 점검이 끝난 노드는 kubectl uncordon <노드>
+  ref: 해답 — 공통 조치
+- name: 런북에 드레인 전 PDB·분산 확인 순서가 있다
+  run: grep -qiE "pdb|disruption" ~/opslab-work/heal/runbook-heal-3.md && grep -qiE "drain|드레인|cordon" ~/opslab-work/heal/runbook-heal-3.md
+  fix: 런북 2. 확인 순서에 "kubectl get pdb(ALLOWED DISRUPTIONS) → 앱 파드의 노드·AZ 분포 → 드레인 이벤트(evict 거부) → cordon 상태"를 적으세요
+  ref: 해답 — 런북 예시

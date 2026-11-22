@@ -24,7 +24,11 @@ metadata:
   name: {{ .Release.Name }}
   labels: {{- include "opslab-app.labels" . | nindent 4 }}
 spec:
+  {{- if .Values.rollout.enabled }}
+  scaleTargetRef: { apiVersion: argoproj.io/v1alpha1, kind: Rollout, name: {{ .Release.Name }} }
+  {{- else }}
   scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: {{ .Release.Name }} }
+  {{- end }}
   minReplicas: {{ .Values.hpa.minReplicas }}
   maxReplicas: {{ .Values.hpa.maxReplicas }}
   metrics:
@@ -39,7 +43,11 @@ metadata:
   name: {{ .Release.Name }}
   labels: {{- include "opslab-app.labels" . | nindent 4 }}
 spec:
+  {{- if .Values.pdb.maxUnavailable }}
+  maxUnavailable: {{ .Values.pdb.maxUnavailable }}
+  {{- else }}
   minAvailable: {{ .Values.pdb.minAvailable }}
+  {{- end }}
   selector:
     matchLabels: {{- include "opslab-app.selector" . | nindent 6 }}
 {{- end }}

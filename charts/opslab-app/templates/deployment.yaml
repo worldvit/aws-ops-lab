@@ -1,13 +1,32 @@
+{{- if .Values.rollout.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout                      # Argo Rollouts — 카나리(일부에게 먼저) 배포. 파드 정의는 Deployment 와 같다
+{{- else }}
 apiVersion: apps/v1
 kind: Deployment
+{{- end }}
 metadata:
   name: {{ .Release.Name }}
   labels: {{- include "opslab-app.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  {{- if .Values.rollout.enabled }}
+  strategy:
+    canary:
+      maxSurge: 1
+      maxUnavailable: 0
+      steps:
+        - setWeight: {{ .Values.rollout.canaryWeight }}       # 새 버전 파드를 일부만 띄워 손님 일부에게 먼저
+        - pause: { duration: {{ .Values.rollout.pauseSeconds }}s }
+        {{- if .Values.rollout.analysis.enabled }}
+        - analysis: { templates: [{ templateName: {{ .Release.Name }}-canary }] }   # 지표로 판정 — 실패하면 자동 중단(abort)·되돌림
+        {{- end }}
+        - setWeight: 100
+  {{- else }}
   strategy:
     type: RollingUpdate
     rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+  {{- end }}
   selector:
     matchLabels: {{- include "opslab-app.selector" . | nindent 6 }}
   template:
@@ -72,21 +91,25 @@ spec:
             - { name: REDIS_HOST, value: {{ .Values.redis.host | quote }} }
             - { name: REDIS_PORT, value: {{ .Values.redis.port | quote }} }
           resources: {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.probes.startup.path }}          {{/* path 를 비우면 그 probe 를 쓰지 않는다 */}}
           startupProbe:
             httpGet: { path: {{ .Values.probes.startup.path }}, port: http }
             periodSeconds: {{ .Values.probes.startup.periodSeconds }}
             timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
             failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+          {{- end }}
           livenessProbe:
             httpGet: { path: {{ .Values.probes.liveness.path }}, port: http }
             periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
             timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
             failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          {{- if .Values.probes.readiness.path }}
           readinessProbe:
             httpGet: { path: {{ .Values.probes.readiness.path }}, port: http }
             periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
             timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
             failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          {{- end }}
           securityContext: {{- toYaml .Values.securityContext | nindent 12 }}
           {{- if .Values.dataVolume.enabled }}
           volumeMounts: [{ name: data, mountPath: {{ .Values.env.APP_DATA_DIR }} }]

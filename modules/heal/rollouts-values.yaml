@@ -1,0 +1,12 @@
+# Argo Rollouts(카나리 배포 컨트롤러) — heal 모듈 구축 2. 이미지는 start 스크립트가 미러 주소로 넘긴다.
+installCRDs: true
+controller:
+  replicas: 1
+  extraEnv:
+    - { name: AWS_REGION, value: ap-northeast-2 }   # CloudWatch 분석이 쓰는 리전
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+dashboard:
+  enabled: false
+notifications:
+  secret: { create: false }

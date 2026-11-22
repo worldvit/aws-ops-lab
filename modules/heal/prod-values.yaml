@@ -1,0 +1,45 @@
+# 운영(prod) 환경 값 — heal 모듈 구축 3 에서 이 파일로 gitops/envs/prod/values.yaml 을 바꿔 커밋한다.
+# charts/opslab-app/values.yaml(기본값)에서 바꾸는 것만 적는다.
+replicaCount: 2
+env:
+  APP_VERSION: v1
+  APP_START_DELAY: "35"  # 느리게 뜨는 앱 — 프로세스가 뜨기까지 35초(그동안 포트가 닫혀 있다)
+  APP_WARMUP_SEC: "15"   # 뜬 뒤 15초 동안 캐시 데우기 — /health 는 200, /ready·/api 는 503
+db:
+  source: vault          # DB 비밀번호는 Vault(금고)에서
+config:
+  name: opslab-app-config-v1
+  wave: "-1"
+  data:
+    APP_GREETING: hello
+precheck:
+  enabled: true
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+# 건강검진 — 역할을 나눈다: startup "아직 출근 준비 중", liveness "살아 있나(아니면 재시작)", readiness "손님 받을 준비 됐나(아니면 트래픽 제외)"
+probes:
+  startup:   { path: /health, periodSeconds: 3, timeoutSeconds: 2, failureThreshold: 30 }   # 최대 90초까지 기다려 준다(35초 시작 + 여유)
+  liveness:  { path: /health, periodSeconds: 10, timeoutSeconds: 2, failureThreshold: 3 }  # 얕게 — 프로세스만 본다(DB 같은 바깥 의존성은 보지 않는다)
+  readiness: { path: /ready,  periodSeconds: 5,  timeoutSeconds: 2, failureThreshold: 2 }  # 데우기가 끝나야 손님을 받는다
+# 점검(드레인) 중에도 최소 1개는 남긴다
+pdb:
+  enabled: true
+  minAvailable: 1
+# 파드를 AZ 마다 고르게 — 한 AZ 가 통째로 끊겨도 다른 AZ 의 파드가 받는다
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector: { matchLabels: { app.kubernetes.io/name: opslab-app, app.kubernetes.io/instance: opslab-app } }
+# 카나리 배포 — 새 버전을 파드 일부에만 먼저 내보내고, ALB 지표(오류율·응답시간)로 판정해 실패하면 자동 중단
+rollout:
+  enabled: true
+  canaryWeight: 50
+  pauseSeconds: 60
+  analysis:
+    enabled: true
+    okMetric: HTTPCode_Target_2XX_Count
+    maxErrorRate: "0.05"
+    maxLatency: "0.5"

@@ -77,9 +77,25 @@ hpa:
   minReplicas: 2
   maxReplicas: 6
   cpuUtilization: 60
-pdb:
+pdb:                               # 점검(드레인) 중에도 최소 몇 개는 남겨 두라는 약속
   enabled: false
-  minAvailable: 1
+  minAvailable: 1                  # 또는 maxUnavailable(한 번에 몇 개까지 내려가도 되나)
+  maxUnavailable: ""
+
+# Argo Rollouts 카나리 배포(heal 모듈) — enabled 면 Deployment 대신 Rollout 을 만든다(클러스터에 Argo Rollouts 가 있어야 함)
+rollout:
+  enabled: false
+  canaryWeight: 50                 # 새 버전 비중(%). 파드 2개면 1개가 새 버전
+  pauseSeconds: 60                 # 지켜보는 시간
+  analysis:                        # CloudWatch(ALB 지표)로 판정하는 분석 — 실패하면 자동 중단
+    enabled: true
+    initialDelay: 60s              # ALB 지표가 CloudWatch 에 들어오기까지 기다림
+    interval: 60s
+    count: 3                       # 3번 잰다
+    failureLimit: 1                # 실패 1번까지 봐준다(2번이면 중단)
+    okMetric: HTTPCode_Target_2XX_Count   # 정상 응답 수 지표 — 오류율 = 1 - 정상/전체
+    maxErrorRate: "0.05"           # 오류율 5% 이하
+    maxLatency: "0.5"              # 평균 응답시간 0.5초 이하
 
 # 앱 설정(ConfigMap) — data 가 있으면 ConfigMap 을 만들고 앱이 환경변수로 읽는다(envFrom).
 # wave 는 Argo CD 적용 순서(sync-wave): 숫자가 작을수록 먼저 만든다. 앱(Deployment)은 0 이므로 설정은 -1 이어야 한다.

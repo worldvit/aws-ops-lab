@@ -1,0 +1,41 @@
+{{- if and .Values.rollout.enabled .Values.rollout.analysis.enabled }}
+{{- $a := .Values.rollout.analysis }}
+# 카나리 판정 템플릿 — CloudWatch 의 ALB 지표로 오류율·응답시간을 잰다. 계정에 ALB 가 하나뿐이라 SEARCH 로 찾는다(학번·ALB 이름을 Git 에 적지 않기 위해).
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ .Release.Name }}-canary
+  labels: {{- include "opslab-app.labels" . | nindent 4 }}
+spec:
+  metrics:
+    - name: error-rate             # 오류율 = 1 - 정상(2XX) 응답 / 전체 요청
+      initialDelay: {{ $a.initialDelay }}
+      interval: {{ $a.interval }}
+      count: {{ $a.count }}
+      failureLimit: {{ $a.failureLimit }}
+      successCondition: 'all(result[0].Values, {# <= {{ $a.maxErrorRate }}})'
+      provider:
+        cloudWatch:
+          interval: 3m
+          metricDataQueries:
+            - id: rate
+              expression: 1 - ok / req
+            - id: ok
+              expression: 'SUM(SEARCH(''{AWS/ApplicationELB,LoadBalancer} MetricName="{{ $a.okMetric }}"'', ''Sum'', 60))'
+              returnData: false
+            - id: req
+              expression: 'SUM(SEARCH(''{AWS/ApplicationELB,LoadBalancer} MetricName="RequestCount"'', ''Sum'', 60))'
+              returnData: false
+    - name: latency                # 평균 응답시간(초)
+      initialDelay: {{ $a.initialDelay }}
+      interval: {{ $a.interval }}
+      count: {{ $a.count }}
+      failureLimit: {{ $a.failureLimit }}
+      successCondition: 'all(result[0].Values, {# <= {{ $a.maxLatency }}})'
+      provider:
+        cloudWatch:
+          interval: 3m
+          metricDataQueries:
+            - id: lat
+              expression: 'AVG(SEARCH(''{AWS/ApplicationELB,LoadBalancer} MetricName="TargetResponseTime"'', ''Average'', 60))'
+{{- end }}

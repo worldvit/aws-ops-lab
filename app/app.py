@@ -28,6 +28,9 @@ EKS 과정(컨테이너) 전용 환경변수 — 설정하지 않으면 아무 �
   /cache  Redis 조회(캐시 적중이면 hit, 아니면 DB 에서 읽어 넣고 miss)
   /aws    IRSA 로 받은 AWS 신원 확인(STS GetCallerIdentity)
   APP_BUILD             이미지를 만든 커밋(짧은 SHA). 응답에 build 로 표시 (image 모듈 파이프라인이 빌드할 때 넣는다)
+  APP_WARMUP_SEC        시작 후 N초 동안 "준비 중"(캐시 데우기 흉내) — /api·/ready 가 503, /health 는 200 (heal 모듈 readiness 실습)
+  /ready        손님 받을 준비가 됐나(readiness 용) — 준비 중이면 503
+  /health/deep  DB 까지 확인하는 깊은 건강검진 — liveness 에 쓰면 DB 장애 때 모든 파드가 재시작된다(heal-1 장애 예)
 """
 import os
 import random
@@ -90,6 +93,30 @@ def health():
     return jsonify(status="ok", **_base())
 
 
+def _warming():
+    """APP_WARMUP_SEC 동안은 준비 중(캐시를 데우는 중이라 손님을 받으면 오류)."""
+    w = float(os.environ.get("APP_WARMUP_SEC", "0") or 0)
+    return w > 0 and time.time() - STARTED_AT < w
+
+
+@app.route("/ready")
+def ready():
+    if _warming():
+        return jsonify(status="warming", **_base()), 503
+    return jsonify(status="ready", **_base())
+
+
+@app.route("/health/deep")
+def health_deep():
+    """DB 에 TCP 로 붙어 보는 깊은 건강검진. DB 가 없으면 503."""
+    c = _db_conf()
+    try:
+        socket.create_connection((c.get("DB_HOST") or "postgres", int(c.get("DB_PORT") or 5432)), timeout=1).close()
+    except OSError as exc:
+        return jsonify(status="db_unreachable", message=str(exc)[:120], **_base()), 503
+    return jsonify(status="ok", db="reachable", **_base())
+
+
 @app.route("/cache")
 def cache():
     """Redis 에 최근 DB 조회 결과(hits 개수)를 30초 캐시한다. 적중이면 hit, 아니면 DB 에서 읽고 miss."""
@@ -135,6 +162,8 @@ def aws_identity():
 
 @app.route("/api")
 def api():
+    if _warming():
+        return jsonify(status="warming", message="warming up cache", **_base()), 503
     rate = float(os.environ.get("APP_ERROR_RATE", "0") or 0)
     if random.random() < rate:
         return jsonify(status="error", message="internal error", **_base()), 500

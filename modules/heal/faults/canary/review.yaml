@@ -1,0 +1,15 @@
+# heal-2 재발 방지로 확인할 항목 — common/review.sh 가 읽는다.
+lab: heal-2
+checks:
+- name: 분석 템플릿의 지표 이름·판정 기준이 정상이다
+  run: bash ~/opslab/modules/heal/state.sh analysis
+  fix: 운영 값 rollout.analysis 의 maxErrorRate(0.05)·maxLatency(0.5)·okMetric(HTTPCode_Target_2XX_Count)을 되돌리는 커밋을 푸시하세요(git revert)
+  ref: 해답 — 변형별 조치
+- name: Rollout 이 Healthy 이다(결함 버전은 되돌리고, 정상 버전은 판정을 통과)
+  run: bash ~/opslab/modules/heal/state.sh rollout
+  fix: 기준을 고친 뒤 중단(abort)된 롤아웃은 kubectl argo rollouts retry rollout opslab-app -n app 으로 다시 시도하세요
+  ref: 해답 — 변형 ② 조치
+- name: 런북에 분석 결과(AnalysisRun)를 확인하는 순서가 있다
+  run: grep -qiE "analysisrun|분석" ~/opslab-work/heal/runbook-heal-2.md && grep -qiE "abort|중단|promote|승격" ~/opslab-work/heal/runbook-heal-2.md
+  fix: 런북 2. 확인 순서에 "롤아웃 단계·상태 → AnalysisRun 의 측정값과 판정 → 분석 템플릿의 지표·기준 → 결함 버전 되돌리기(git revert) / 중단 원인"을 적으세요
+  ref: 해답 — 런북 예시

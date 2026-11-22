@@ -20,7 +20,7 @@ node_count: 2
 # 미러 레지스트리(강사 ECR Public). tools/mirror-images.sh 가 images 를 같은 태그로 복사한다.
 registry: public.ecr.aws/x4d0l7d9/opslab   # 리허설 계정(6762) 미러 — Day 0에 강사 계정 값으로 바꾼다
 images:
-  app: opslab-app:1.0.0           # 저장소 app/ 에서 빌드(tools/mirror-images.sh build)
+  app: opslab-app:1.1.0           # 저장소 app/ 에서 빌드(tools/mirror-images.sh build) — 1.1.0: /ready·/health/deep·APP_WARMUP_SEC·APP_BUILD
   postgres: pgvector/pgvector:pg16
   redis: library/redis:7.4-alpine
   busybox: library/busybox:1.37
@@ -31,6 +31,7 @@ images:
   argocd: quay.io/argoproj/argocd:v3.4.4   # Argo CD(GitOps 감시원) — vendor/charts/argo-cd 9.7.1
   argocd-redis: library/redis:8.2.3-alpine # Argo CD 내부 캐시(차트 9.7.1 기본 태그)
   python: library/python:3.12-slim         # 샘플 앱 기본 이미지 — image 모듈 파이프라인이 미러에서 받아 빌드한다
+  argo-rollouts: quay.io/argoproj/argo-rollouts:v1.10.2   # Argo Rollouts(카나리 배포) — vendor/charts/argo-rollouts 2.43.12
   python-old: library/python:3.12.0-slim-bookworm   # 취약점이 많은 옛 기본 이미지(image-3) — 2026-11 측정 CRITICAL 17 (정상 3.12-slim 은 CRITICAL 0·HIGH 3). Day 0 에 다시 측정
 # GitOps — 수강생 Fork(~/opslab-env.sh 의 GITHUB_REPO=<내 ID>/aws-ops-lab)의 그날 브랜치 opslab/<모듈>-<날짜> 를 이 태그에서 만든다
 upstream_repo: worldvit/aws-ops-lab
