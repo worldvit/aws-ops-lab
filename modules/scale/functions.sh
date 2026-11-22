@@ -46,6 +46,7 @@ hpa_line() { hpa_json | jq -r '"CPU \(.status.currentMetrics[0].resource.current
 spike() {  # start [병렬 수] | stop — 샘플 앱 Service 로 쉬지 않고 요청을 보내는 "트래픽 급증" 파드(CPU 를 올린다)
   if [ "${1:-start}" = stop ]; then kubectl -n "$APP_NS" delete deploy opslab-spike --ignore-not-found --wait=false >/dev/null
     kubectl -n "$APP_NS" delete pod -l app.kubernetes.io/name=opslab-spike --grace-period=0 --force --wait=false >/dev/null 2>&1; return 0; fi
+  kubectl -n "$APP_NS" wait --for=delete deploy/opslab-spike --timeout=90s >/dev/null 2>&1 || true   # 방금 멈춘 것이 아직 지워지는 중이면 apply 가 실패한다
   kubectl apply -f - >/dev/null <<YAML
 apiVersion: apps/v1
 kind: Deployment
@@ -82,6 +83,7 @@ ca_remove() {  # Karpenter 와 같은 노드를 두고 다투지 않도록 지�
 }
 batch() {  # start [개수] [CPU] | stop — 큰 자원을 요청하는 "배치 작업" 파드(노드가 더 있어야 뜬다)
   if [ "${1:-start}" = stop ]; then kubectl -n "$APP_NS" delete deploy opslab-batch --ignore-not-found --wait=false >/dev/null; return 0; fi
+  kubectl -n "$APP_NS" wait --for=delete deploy/opslab-batch --timeout=90s >/dev/null 2>&1 || true   # 방금 멈춘 것이 아직 지워지는 중이면 apply 가 실패한다
   kubectl apply -f - >/dev/null <<YAML
 apiVersion: apps/v1
 kind: Deployment
@@ -144,6 +146,7 @@ pg_restore() {  # 스냅샷에서 PVC 복원 — PostgreSQL 을 멈추고, 같�
 # ── 5) 운영 Lab scale-6 — 과대 요청(쓰지도 않는데 CPU 를 크게 잡아 둔) 서비스. Karpenter 가 이 요청 때문에 노드를 하나 더 띄운다
 idle() {  # start | stop
   if [ "${1:-start}" = stop ]; then kubectl -n "$APP_NS" delete deploy opslab-idle --ignore-not-found --wait=false >/dev/null; return 0; fi
+  kubectl -n "$APP_NS" wait --for=delete deploy/opslab-idle --timeout=90s >/dev/null 2>&1 || true   # 방금 멈춘 것이 아직 지워지는 중이면 apply 가 실패한다
   kubectl apply -f - >/dev/null <<YAML
 apiVersion: apps/v1
 kind: Deployment
