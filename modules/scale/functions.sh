@@ -2,6 +2,7 @@
 # scale 모듈(스케일 · 업그레이드 · 비용) 함수 — full.sh(따라잡기)·장애 스크립트(lib.sh)·verify·check·cleanup 이 함께 쓴다.
 # 미리 common/eks.sh 를 source 해 두어야 한다.
 SM="$EKS_ROOT/modules/scale"
+ACCT=${ACCT:-$(aws sts get-caller-identity --query Account --output text)}
 NG="$SID-cluster-ng"                          # 관리형 노드 그룹(K1 층) — 클러스터 오토스케일러가 늘리고 줄인다
 NODE_ROLE="$SID-cluster-node-role"            # K1 층 노드 역할 — Karpenter 노드도 같은 역할을 쓴다(접근 항목이 이미 있다)
 CA_ROLE="$SID-scale-ca-role"                  # 클러스터 오토스케일러 IRSA 역할(오토스케일링 그룹 크기 조정)
