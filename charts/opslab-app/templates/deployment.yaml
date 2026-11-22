@@ -48,6 +48,9 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- if .Values.preStopSleep }}
+      terminationGracePeriodSeconds: {{ add .Values.preStopSleep 30 }}   {{/* 기다리는 시간 + 정상 종료 30초 */}}
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
