@@ -43,7 +43,8 @@ hpa_on() {  # 파드 수가 자주 바뀌므로 ALB 준비 게이트를 켠다 �
 hpa_json() { kubectl -n "$APP_NS" get hpa opslab-app -o json 2>/dev/null; }
 hpa_line() { hpa_json | jq -r '"CPU \(.status.currentMetrics[0].resource.current.averageUtilization // "?")%/\(.spec.metrics[0].resource.target.averageUtilization)% · 파드 \(.status.currentReplicas // 0)→\(.status.desiredReplicas // 0) (최소 \(.spec.minReplicas)·최대 \(.spec.maxReplicas))"'; }
 spike() {  # start [병렬 수] | stop — 샘플 앱 Service 로 쉬지 않고 요청을 보내는 "트래픽 급증" 파드(CPU 를 올린다)
-  if [ "${1:-start}" = stop ]; then kubectl -n "$APP_NS" delete deploy opslab-spike --ignore-not-found --wait=false >/dev/null; return 0; fi
+  if [ "${1:-start}" = stop ]; then kubectl -n "$APP_NS" delete deploy opslab-spike --ignore-not-found --wait=false >/dev/null
+    kubectl -n "$APP_NS" delete pod -l app.kubernetes.io/name=opslab-spike --grace-period=0 --force --wait=false >/dev/null 2>&1; return 0; fi
   kubectl apply -f - >/dev/null <<YAML
 apiVersion: apps/v1
 kind: Deployment
@@ -54,6 +55,7 @@ spec:
   template:
     metadata: { labels: { app.kubernetes.io/name: opslab-spike, course: opslab } }
     spec:
+      terminationGracePeriodSeconds: 1      # 멈추면 바로 끝나게(셸은 종료 신호를 무시하므로)
       containers:
         - name: spike
           image: $(img busybox)
