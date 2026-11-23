@@ -1,0 +1,15 @@
+# scale-1 재발 방지로 확인할 항목 — common/review.sh 가 읽는다.
+lab: scale-1
+checks:
+- name: HPA 가 CPU 사용률을 읽고 대상을 찾으며, 최소 < 최대이고 앱에 CPU 요청이 있다
+  run: bash ~/opslab/modules/scale/state.sh hpa
+  fix: metrics-server 파드 수(kubectl -n kube-system scale deploy metrics-server --replicas=2), 앱 CPU 요청(helm upgrade … --reuse-values --set resources.requests.cpu=50m), HPA 대상 이름(opslab-app)을 기준으로 되돌리세요
+  ref: 해답 — 변형별 조치
+- name: 트래픽 급증 파드를 멈췄고 Pending 파드가 없다
+  run: '! kubectl -n app get deploy opslab-spike >/dev/null 2>&1 && bash ~/opslab/modules/scale/state.sh pending'
+  fix: 관찰이 끝났으면 kubectl -n app delete deploy opslab-spike
+  ref: 해답 — 정상 확인
+- name: 런북에 HPA 확인 순서(describe hpa → 지표 → 요청 → 대상)가 있다
+  run: grep -qiE "describe hpa|hpa" ~/opslab-work/scale/runbook-scale-1.md && grep -qiE "metrics-server|요청|requests" ~/opslab-work/scale/runbook-scale-1.md
+  fix: 런북 2. 확인 순서에 "kubectl describe hpa 의 Conditions·Events → metrics-server → 앱 CPU 요청 → 대상 이름·최소/최대"를 적으세요
+  ref: 해답 — 런북 예시

@@ -1,0 +1,38 @@
+# Karpenter 기준 상태 — EC2NodeClass(어떻게: AMI·서브넷·보안 그룹·역할·태그)와 NodePool(무엇을: 인스턴스 조건·한도·정리 정책)
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  role: __NODE_ROLE__                                   # K1 층 노드 역할(접근 항목이 이미 있다)
+  amiSelectorTerms:
+    - alias: al2023@latest                              # 클러스터 버전에 맞는 최신 EKS 최적화 AMI — 업그레이드하면 노드도 따라 바뀐다(드리프트)
+  subnetSelectorTerms:
+    - tags: { karpenter.sh/discovery: __SID__ }         # L1 층 앱 서브넷 2개(AZ a·c)에 붙어 있는 태그
+  securityGroupSelectorTerms:
+    - tags: { aws:eks:cluster-name: __CLUSTER__ }       # 클러스터 보안 그룹 — 관리형 노드와 같다
+  metadataOptions: { httpTokens: required, httpPutResponseHopLimit: 2 }
+  tags: { Course: opslab, Module: scale, Owner: __SID__, Name: __SID__-scale-karpenter-node }
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: default
+spec:
+  template:
+    metadata:
+      labels: { opslab/pool: karpenter }
+    spec:
+      nodeClassRef: { group: karpenter.k8s.aws, kind: EC2NodeClass, name: default }
+      requirements:
+        - { key: karpenter.sh/capacity-type, operator: In, values: [on-demand] }
+        - { key: kubernetes.io/arch, operator: In, values: [amd64] }
+        - { key: karpenter.k8s.aws/instance-category, operator: In, values: [c, m, r] }
+        - { key: karpenter.k8s.aws/instance-generation, operator: Gt, values: ["5"] }
+        - { key: karpenter.k8s.aws/instance-size, operator: In, values: [large, xlarge] }
+      expireAfter: 168h
+  limits:
+    cpu: "16"                                           # 이 NodePool 이 만들 수 있는 노드 vCPU 합계 상한(비용 안전장치)
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized       # 비거나 덜 쓰는 노드는 합치거나 없앤다(비용 정리 — scale-6)
+    consolidateAfter: 1m

@@ -1,0 +1,19 @@
+# 예전 저장소에서 가져온 "앱 부가 설정" — scale-4 사전 점검용. 지금 클러스터에 적용하면 실패한다(폐기된 API).
+#   kubectl apply --dry-run=server -f ~/opslab/modules/scale/legacy/app-extras.yaml
+apiVersion: autoscaling/v2beta2          # 1.26 에서 제거됨 → autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: opslab-legacy, namespace: app, labels: { course: opslab } }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: opslab-app }
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource: { name: memory, target: { type: Utilization, averageUtilization: 80 } }
+---
+apiVersion: policy/v1beta1               # 1.25 에서 제거됨 → policy/v1
+kind: PodDisruptionBudget
+metadata: { name: opslab-legacy, namespace: app, labels: { course: opslab } }
+spec:
+  minAvailable: 1
+  selector: { matchLabels: { app.kubernetes.io/instance: opslab-app } }
