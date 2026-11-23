@@ -37,7 +37,7 @@ images:
   karpenter: public.ecr.aws/karpenter/controller:1.15.3   # Karpenter(노드 자동 공급) — vendor/charts/karpenter 1.15.3, 쿠버네티스 1.29~1.37
 # GitOps — 수강생 Fork(~/opslab-env.sh 의 GITHUB_REPO=<내 ID>/aws-ops-lab)의 그날 브랜치 opslab/<모듈>-<날짜> 를 이 태그에서 만든다
 upstream_repo: worldvit/aws-ops-lab
-gitops_base_tag: eks-v1
+gitops_base_tag: eks-v2
 days:
   1: workload
   2: cluster
